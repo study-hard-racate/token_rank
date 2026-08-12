@@ -137,7 +137,16 @@ def main():
 
     for name in ("history.json", "aa_perf.json"):
         src = os.path.join(ROOT, name)
-        if os.path.isfile(src):
+        if not os.path.isfile(src):
+            continue
+        if name == "history.json":
+            with open(src, "r", encoding="utf-8") as f:
+                hist = json.load(f)
+            clean = {k: v for k, v in hist.items() if isinstance(v, list)}
+            with open(os.path.join(SITE, name), "w", encoding="utf-8") as f:
+                json.dump(clean, f, ensure_ascii=False)
+            info("site/history.json 已拷贝（清理非数组键 {} 个）".format(len(hist) - len(clean)))
+        else:
             shutil.copyfile(src, os.path.join(SITE, name))
             info("site/{} 已拷贝".format(name))
 

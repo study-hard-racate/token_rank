@@ -184,7 +184,8 @@ function histDeltasLocal(days) {
   const out = {};
   const cutoff = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
   for (const [mid, entries] of Object.entries(state.histData || {})) {
-    const pts = (entries || []).filter((e) => e.date >= cutoff);
+    if (!Array.isArray(entries) || !entries.length) continue;
+    const pts = entries.filter((e) => e.date >= cutoff);
     if (pts.length >= 2) {
       const first = pts[0], last = pts[pts.length - 1];
       const pct = (a, b) => (!a || b == null || b === 0) ? null : Math.round((a / b * 100 - 100) * 10) / 10;
@@ -211,7 +212,8 @@ function lowMapLocal() {
 }
 
 function getHistoryLocal(id, days) {
-  const entries = (state.histData || {})[id] || [];
+  const all = (state.histData || {})[id];
+  const entries = Array.isArray(all) ? all : [];
   const cutoff = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
   return { model: id, days, points: entries.filter((e) => e.date >= cutoff) };
 }
