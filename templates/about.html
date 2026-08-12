@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关于与数据说明 · LLM Token 定价排行榜</title>
+  <meta name="description" content="数据来源、价格历史积累机制、综合评分口径与限制说明">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css?v=27">
+</head>
+<body>
+  <header>
+    <h1>关于与数据说明</h1>
+    <p class="subtitle">本页解释榜单的数据来源、统计口径与已知限制（不夸大、不粉饰）</p>
+  </header>
+
+  <section class="card">
+    <h2>数据来源</h2>
+    <div class="about-para">
+      价格与能力数据主要来自 <b>OpenRouter 公开 API</b>（/api/v1/models，无需密钥，涵盖全球数百个模型），另尝试抓取 DeepSeek 官方定价页作为辅助。若主站暂时不可达，自动使用上次成功缓存并如实标记；服务器环境对部分站点有限制（如 DeepSeek 官网可能返回 403），此时页面会如实提示。
+    </div>
+    <div class="about-para">本页所有数据<b>不承诺绝对准确</b>：价格由厂商+路由平台发布，实际计费请以各官方定价页为准。</div>
+  </section>
+
+  <section class="card">
+    <h2>价格口径与历史</h2>
+    <div class="about-para">单价统一换算为 <b>美元 / 100 万 tokens</b>；人民币仅为按当前汇率的展示换算，可手动修改或点"自动汇率"获取（失败时会提示手动输入，不造假）。缓存输入价为缓存命中优惠价；估算器按 未命中原价 + 命中缓存价 折算。</div>
+    <div class="about-para">历史快照自部署之日起<b>按日自动记录</b>（保留 45 天）。免费托管层无常驻定时任务，快照依赖您访问页面时触发刷新判断（约 6 小时一次）；若某天无人访问，当天价格历史会如实显示中断（页面会提示缺天数），不会伪造数据。</div>
+    <div class="about-para">"历史"按钮查看单模型走势（近 1 周/近 1 月），≥2 个数据点才显示折线并可导出 CSV；"近期价格变化"榜单按每日快照计算 3/7/30 天涨跌幅。</div>
+  </section>
+
+  <section class="card">
+    <h2>综合评分口径</h2>
+    <div class="about-para">综合分 = 价格分 × 权重 + 能力分 × 权重 + 速度分 × 权重（缺项按剩余权重重归一化）。三档权重：均衡型 40/40/20、性价比型 50/35/15、性能优先 25/50/25。</div>
+    <div class="about-para"><b>能力分</b>取场景对应的 Artificial Analysis 指数（通用智能/编程/智能体，逐级兜底），指数缺失时沿用上次缓存并在界面如实标注（此类模型<b>不参与综合评分</b>，另入"实惠榜"按价格排序）；<b>速度分</b>为 OpenRouter 实测吞吐的百分位名次。</div>
+  </section>
+
+  <section class="card">
+    <h2>性能数据说明（tps/ttft）</h2>
+    <div class="about-para">精确实测吞吐（tokens/s）与首 token 延迟（ttft）曾由 OpenRouter API 提供；2026 年 OpenRouter API 改版后已不再返回该字段（经带密钥实测确认）。现 tps/ttft 改由 <b>Artificial Analysis 官网公开评测数据</b>按模型名匹配补充，无需任何密钥：tps 取其官网评测中位输出速度（tokens/s），ttft 取收到首答案 token 的时间（毫秒，含思考时间）；官网未收录的模型如实显示"暂无（AA 评测未收录该模型）"。</div>
+    <div class="about-para">速度维度同时使用吞吐<b>名次</b>（百分位，排序接口仍正常返回）；详情弹窗中由 AA 补充的性能数据会标注来源。</div>
+  </section>
+
+  <section class="card">
+    <h2>诚实与限制声明</h2>
+    <div class="about-para"><b>原则：数据不足就说不足，不做假数据。</b>指数缺失沿用缓存时会披露；本机/服务器网络失败（例如 OpenRouter 或 DeepSeek 官网被拦截）时会提示"部分辅助源失败"，不会用旧数据冒充新数据。</div>
+    <div class="about-para">免费托管存在 off-peak 时段限制，高峰时服务可能不可用，属平台规则。页面通过 <code>?v=</code> 参数控制缓存刷新，静态资源最长缓存 1 小时。</div>
+    <div class="about-para">本工具仅供学习与比价参考，不做投资/采购保证。</div>
+  </section>
+
+  <footer><a href="/">← 返回排行榜</a></footer>
+</body>
+</html>

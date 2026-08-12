@@ -1,0 +1,53 @@
+name: update-data
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 检出历史发布分支（恢复数据保证历史连续）
+        run: |
+          git fetch origin gh-pages --depth=1 || true
+          rm -rf prev
+          git worktree prune || true
+          git worktree add prev origin/gh-pages 2>/dev/null || true
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 爬取并构建 site/
+        run: python build_static.py --restore prev
+
+      - name: 提交并推送 gh-pages 分支（Pages 发布源）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git worktree remove prev --force 2>/dev/null || rm -rf prev
+          cp -r site /tmp/site_out
+          git branch -D gh-pages 2>/dev/null || true
+          git checkout --orphan gh-pages
+          git rm -rf . >/dev/null 2>&1 || true
+          cp -r /tmp/site_out/* .
+          touch .nojekyll
+          git add -A
+          git commit -m "data update $(date -u +%Y-%m-%dT%H:%MZ)" || echo "no changes"
+          git push -f origin gh-pages
