@@ -253,7 +253,15 @@ function summaryLocal() {
       max_context: Math.max.apply(null, its.map((x) => x.context || 0)),
     };
   }
-  return { total_models: state.allItems.length, providers: stats, history: histStatsLocal() };
+  const h = histStatsLocal();
+  if (state.staticMode) {
+    const lastUpd = state.updated ? new Date(state.updated).getTime() : 0;
+    const stale = !lastUpd || Date.now() - lastUpd > 12 * 3600 * 1000;
+    h.gap_days = stale ? 1 : 0;
+    h.stale = stale;
+    h.updated = state.updated;
+  }
+  return { total_models: state.allItems.length, providers: stats, history: h };
 }
 
 async function loadDataStatic() {
@@ -695,7 +703,9 @@ function renderHistProg(hist) {
     ? `已积累 ${hist.days} 天，覆盖 ${hist.models} 个模型（${hist.points} 个快照）`
     : `已积累 ${hist.days} 天（${hist.first} 起），覆盖 ${hist.models} 个模型，满 ${full} 天后趋势更完整`;
   const gap = hist.gap_days > 0
-    ? ` <span class="hist-warn">⚠ 历史快照已中断 ${hist.gap_days} 天（最后 ${hist.last}）——免费层无定时任务，请每天访问一次页面续记历史</span>`
+    ? (state.staticMode
+      ? ` <span class="hist-warn">⚠ 数据较旧（最后更新 ${fmtTime(hist.updated)}）——由 GitHub Actions 定时更新，稍后刷新查看</span>`
+      : ` <span class="hist-warn">⚠ 历史快照已中断 ${hist.gap_days} 天（最后 ${hist.last}）——免费层无定时任务，请每天访问一次页面续记历史</span>`)
     : "";
   box.innerHTML = `<div class="hist-track"><div class="hist-fill" style="width:${pct}%"></div></div>
     <span class="hist-note">${note}</span>${gap}`;
