@@ -290,6 +290,7 @@ async function loadDataStatic() {
       const pf = (o.pf || {})[scene];
       o.pf_v = pf ? pf.v : null;
       o.pf_src = pf ? pf.src : null;
+      o.pf = o.pf_v;
       o.comp = calcComp(o, preset);
       return o;
     });
