@@ -80,6 +80,13 @@ def copy_frontend():
         html = html.replace('href="/static/', 'href="static/')
         html = html.replace('src="/static/', 'src="static/')
         html = html.replace('href="/about"', 'href="about.html"')
+        if dst == "about.html":
+            html = html.replace(
+                "免费托管层无常驻定时任务，快照依赖您访问页面时触发刷新判断（约 6 小时一次）；若某天无人访问，当天价格历史会如实显示中断（页面会提示缺天数），不会伪造数据。",
+                "本站由 GitHub Actions 定时任务每 6 小时自动爬取记录；若某次定时任务未运行，当天价格历史会如实空缺并在页面提示（不补造）。")
+            html = html.replace(
+                "免费托管存在 off-peak 时段限制，高峰时服务可能不可用，属平台规则。",
+                "本站部署于 GitHub Pages，由 Actions 定时更新，无 off-peak 时段限制。")
         with open(os.path.join(SITE, dst), "w", encoding="utf-8") as f:
             f.write(html)
     for name in ("app.js", "style.css", "chart.umd.min.js", "favicon.svg"):
@@ -99,6 +106,24 @@ def write_data(items, payload):
     info("site/data.json: {} 个模型".format(len(items)))
 
 
+FALLBACK_MARKER = "all sources failed, using built-in fallback"
+
+
+def fetch_online_data():
+    """离线构建前尝试拉取线上最新数据（防本地旧数据覆盖线上历史）。失败则用本地。"""
+    for name, dst in (("data.json", "data.json"), ("history.json", "history.json")):
+        try:
+            import urllib.request
+            url = "https://study-hard-racate.github.io/token_rank/" + name
+            with urllib.request.urlopen(url, timeout=30) as r:
+                b = r.read()
+            with open(os.path.join(ROOT, dst), "wb") as f:
+                f.write(b)
+            info("已拉取线上最新 {}（{} 字节）".format(name, len(b)))
+        except Exception as e:
+            info("拉取线上 {} 失败，用本地：{}".format(name, str(e)[:60]))
+
+
 def main():
     offline = "--offline" in sys.argv
     restore = None
@@ -115,6 +140,7 @@ def main():
                 info("已从 {} 恢复 {}".format(restore, name))
 
     if offline:
+        fetch_online_data()
         cached = None
         try:
             with open(os.path.join(ROOT, "data.json"), "r", encoding="utf-8") as f:
@@ -124,12 +150,25 @@ def main():
             sys.exit(1)
         items = list(cached.get("items") or [])
         payload = cached
-        info("离线模式：使用本地 data.json（{} 个模型）".format(len(items)))
+        info("离线模式：使用 data.json（{} 个模型）".format(len(items)))
     else:
         import scraper
         payload = scraper.collect()
         items = payload.get("items") or []
         info("在线模式：爬取完成（{} 个模型，errors={}）".format(len(items), len(payload.get("errors") or [])))
+        if any(FALLBACK_MARKER in str(e) for e in payload.get("errors") or []):
+            old = None
+            try:
+                with open(os.path.join(ROOT, "data.json"), "r", encoding="utf-8") as f:
+                    old = json.load(f)
+            except (OSError, ValueError):
+                old = None
+            if old and old.get("items"):
+                info("所有数据源失败：保留上次成功数据（{} 个模型），如实标注错误".format(len(old["items"])))
+                payload = dict(old)
+                payload["errors"] = (payload.get("errors") or []) + [
+                    "all sources failed on this run: kept last successful data"]
+                items = payload["items"]
 
     items = add_scores(items)
     os.makedirs(SITE, exist_ok=True)

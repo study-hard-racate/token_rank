@@ -123,6 +123,7 @@ async function loadData() {
     state.deltas = data.deltas7 || {};
     state.deltasFetched = true;
     renderMeta(data);
+    fillProviders();
     renderTable();
     renderChart();
     renderStats();
@@ -140,6 +141,10 @@ async function loadData() {
 
 async function detectStatic() {
   if (state.staticMode != null) return state.staticMode;
+  if (location.hostname.endsWith("github.io") || location.pathname.indexOf("/token_rank") === 0) {
+    state.staticMode = true;
+    return true;
+  }
   try {
     const res = await fetch("/api/data?probe=1", { signal: AbortSignal.timeout(5000) });
     if (!res.ok) throw new Error("no api");
@@ -230,11 +235,20 @@ function histStatsLocal() {
   }
   const ds = [...dates].sort();
   const first = ds[0] || null, last = ds[ds.length - 1] || null;
+  let gaps = 0;
+  if (first && last) {
+    const end = new Date(last + "T00:00:00Z").getTime();
+    let cur = new Date(first + "T00:00:00Z").getTime();
+    while (cur < end) {
+      cur += 86400000;
+      if (!dates.has(new Date(cur).toISOString().slice(0, 10))) gaps += 1;
+    }
+  }
   let gapDays = 0;
   if (last) {
     gapDays = Math.max(0, Math.floor((new Date(new Date().toISOString().slice(0, 10)) - new Date(last)) / 86400000));
   }
-  return { days: ds.length, models, points, first, last, gap_days: gapDays };
+  return { days: ds.length, models, points, first, last, gap_days: gapDays, gaps };
 }
 
 function summaryLocal() {
@@ -309,6 +323,7 @@ async function loadDataStatic() {
     state.items = items;
     state.showAll = false;
     renderMeta({ count: items.length, updated: state.updated, errors: state.staticErrors });
+    fillProviders();
     renderTable();
     renderChart();
     renderStats();
@@ -327,7 +342,7 @@ async function loadDataStatic() {
 function renderLoadError() {
   const tbody = document.querySelector("#rank tbody");
   if (tbody && !state.items.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="loading-cell">加载失败（可能处于离线或服务器繁忙）。请点击「立即刷新」重试，或稍后访问。</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="loading-cell">加载失败（可能处于离线或服务器繁忙）。请点击「立即刷新」重试，或稍后访问。</td></tr>`;
   }
   $("meta").innerHTML = ` <span class="err">⚠ 数据加载失败（${(state.loadError && state.loadError.message) || "网络错误"}）。数据仍停留在上次成功结果。</span>`;
 }
@@ -708,8 +723,11 @@ function renderHistProg(hist) {
       ? ` <span class="hist-warn">⚠ 数据较旧（最后更新 ${fmtTime(hist.updated)}）——由 GitHub Actions 定时更新，稍后刷新查看</span>`
       : ` <span class="hist-warn">⚠ 历史快照已中断 ${hist.gap_days} 天（最后 ${hist.last}）——免费层无定时任务，请每天访问一次页面续记历史</span>`)
     : "";
+  const gapsWarn = state.staticMode && hist.gaps > 0
+    ? ` <span class="hist-warn" title="如 08-13 这类日期无任何数据源运行（如实保留空缺，不补造）">⚠ 历史记录有 ${hist.gaps} 天空缺（当日数据源未运行）</span>`
+    : "";
   box.innerHTML = `<div class="hist-track"><div class="hist-fill" style="width:${pct}%"></div></div>
-    <span class="hist-note">${note}</span>${gap}`;
+    <span class="hist-note">${note}</span>${gap}${gapsWarn}`;
 }
 
 function saveFilters() {
@@ -1093,24 +1111,28 @@ async function trendRender() {
     if (state.trend.chart) state.trend.chart.destroy();
     const r = rate();
     const colors = ["#38bdf8", "#fbbf24", "#34d399", "#f472b6"];
+    const allDates = [...new Set(dataList.flatMap((d) => d.pts.map((p) => p.date)))].sort();
     const datasets = [];
     dataList.forEach((d, di) => {
       if (d.pts.length < 2) return;
+      const byDate = {};
+      d.pts.forEach((p) => { byDate[p.date] = p; });
       const base = colors[di % colors.length];
+      const series = (key) => allDates.map((date) => (byDate[date] ? byDate[date][key] * r : null));
       datasets.push({
         label: (d.it ? d.it.name.split(" (")[0] : "模型") + " 输入",
-        data: d.pts.map((p) => p.input * r), borderColor: base,
-        backgroundColor: base + "33", tension: .3, borderDash: [],
+        data: series("input"), borderColor: base,
+        backgroundColor: base + "33", tension: .3, borderDash: [], spanGaps: true,
       });
       datasets.push({
         label: (d.it ? d.it.name.split(" (")[0] : "模型") + " 输出",
-        data: d.pts.map((p) => p.output * r), borderColor: base,
-        backgroundColor: "transparent", tension: .3, borderDash: [5, 5],
+        data: series("output"), borderColor: base,
+        backgroundColor: "transparent", tension: .3, borderDash: [5, 5], spanGaps: true,
       });
     });
     state.trend.chart = new Chart($("trend-chart"), {
       type: "line",
-      data: { labels: dataList.map((d) => d.pts.map((p) => p.date)).sort((a, b) => a.length - b.length).pop() || [], datasets },
+      data: { labels: allDates, datasets },
       options: {
         responsive: true,
         plugins: { legend: { labels: { color: cc.tick, boxWidth: 16, font: { size: 11 } } } },
@@ -1155,12 +1177,25 @@ async function manualRefresh() {
   }
 }
 
-function initProviders() {
+let _providersKey = "";
+
+function fillProviders() {
+  const key = state.providers.join("|");
+  if (key === _providersKey) return;
+  _providersKey = key;
+  const sel = $("provider");
+  const cur = sel.value;
+  sel.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = "全部厂商";
+  sel.appendChild(all);
   state.providers.forEach((p) => {
     const op = document.createElement("option");
     op.value = op.textContent = p;
-    $("provider").appendChild(op);
+    sel.appendChild(op);
   });
+  if (cur && state.providers.includes(cur)) sel.value = cur;
 }
 
 const MAX_CMP = 6;
@@ -1486,7 +1521,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   await loadData();
   autoRate(true);
-  initProviders();
   if (state.savedProvider) {
     const sp = state.savedProvider;
     delete state.savedProvider;
