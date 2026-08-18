@@ -139,35 +139,111 @@ def _parse_usd(text):
     return None
 
 
+def _row_prices(row):
+    """取行内 $ 开头数值（价格列），返回 [flash, pro] 顺序的数值列表。"""
+    vals = []
+    for cell in row:
+        for m in re.finditer(r"\$\s?(\d+(?:\.\d+)?)", cell):
+            vals.append(float(m.group(1)))
+    return vals
+
+
 def scrape_deepseek():
-    html = _http_get("https://api-docs.deepseek.com/quick_start/pricing", timeout=6).text
+    """抓 DeepSeek 官方定价页（每 1M tokens，$/1M）。
+
+    新页面结构：表格两列（deepseek-v4-flash | deepseek-v4-pro），
+    价格行：缓存命中/未命中/输出 × OFF-PEAK/PEAK 两档。
+    本函数取 OFF-PEAK 档（低价档），输出三条官方条目（flash-0731 / pro-0813 / flash-latest）。
+    页面结构变化导致解析失败时抛异常，由 fetch_all 捕获降级。
+    """
+    html = _http_get("https://api-docs.deepseek.com/quick_start/pricing", timeout=10).text
     soup = BeautifulSoup(html, "html.parser")
-    text = soup.get_text(" ", strip=True)
-    prices = re.findall(r"\$\s?(\d+(?:\.\d+)?)", text)
-    if not prices:
-        return []
+    table = soup.find("table")
+    if not table:
+        raise ValueError("pricing table not found")
     rows = []
+    for tr in table.find_all("tr"):
+        cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+        if cells:
+            rows.append(cells)
+    model_row = next((r for r in rows if r and r[0].strip().upper() == "MODEL"), None)
+    if not model_row:
+        raise ValueError("MODEL row not found")
+    ver_row = next((r for r in rows if r and "MODEL VERSION" in r[0].upper()), None)
+    ids = {"deepseek-v4-flash": "deepseek/deepseek-v4-flash-0731",
+           "deepseek-v4-pro": "deepseek/deepseek-v4-pro-0813"}
+    versions = [v.strip() for v in (ver_row[1:] if ver_row else []) if v.strip()]
+    prices = {}
+    pending = None
+    for r in rows:
+        joined = " ".join(r).upper()
+        if "CACHE HIT" in joined:
+            pending = "hit"
+        elif "CACHE MISS" in joined:
+            pending = "miss"
+        elif "OUTPUT TOKENS" in joined:
+            pending = "out"
+        else:
+            continue
+        is_peak = joined.startswith("PEAK")
+        if is_peak and pending is None:
+            continue
+        if pending is None:
+            continue
+        vals = _row_prices(r)
+        if len(vals) < 2:
+            continue
+        prices[(pending, "peak" if is_peak else "off")] = vals
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    if len(prices) >= 4:
-        rows.append({"id": "deepseek/deepseek-chat", "name": "DeepSeek V3",
-                     "provider": "DeepSeek", "input": float(prices[0]), "output": float(prices[1]),
-                     "context": 64000, "updated": now})
-        rows.append({"id": "deepseek/deepseek-reasoner", "name": "DeepSeek R1",
-                     "provider": "DeepSeek", "input": float(prices[2]), "output": float(prices[3]),
-                     "context": 64000, "updated": now})
-    return rows
+    out = []
+    for i, (model, mid) in enumerate(ids.items()):
+        if i >= len(versions):
+            continue
+        hit_off = prices.get(("hit", "off")) or [None, None]
+        miss_off = prices.get(("miss", "off")) or [None, None]
+        out_off = prices.get(("out", "off")) or [None, None]
+        if out_off[i] is None:
+            continue
+        row = {"id": mid, "name": "DeepSeek {} (DeepSeek)".format(versions[i]),
+               "provider": "DeepSeek", "input": miss_off[i], "output": out_off[i],
+               "cache_in": hit_off[i], "context": 1000000, "updated": now}
+        out.append(row)
+        if model == "deepseek-v4-flash":
+            latest = dict(row)
+            latest["id"] = "~deepseek/deepseek-v4-flash-latest"
+            latest["name"] = "DeepSeek V4 Flash Latest (DeepSeek)"
+            out.append(latest)
+    return out
 
 
 def fetch_all():
     results = []
     errors = []
+    ds_rows = []
     for fn in (fetch_openrouter, scrape_deepseek):
         try:
             got = fn()
             if got:
+                if fn is scrape_deepseek:
+                    ds_rows = got
                 results.extend(got)
         except Exception as exc:
             errors.append("{}: {}".format(fn.__name__, str(exc)[:120]))
+    if ds_rows:
+        by_id = {r.get("id"): r for r in results}
+        for d in ds_rows:
+            old = by_id.get(d["id"])
+            if old:
+                merged = dict(old)
+                for k in ("input", "output", "cache_in", "context"):
+                    merged[k] = d.get(k, old.get(k))
+                merged["updated"] = d["updated"]
+                merged["official_price"] = True
+                by_id[d["id"]] = merged
+            else:
+                d["official_price"] = True
+                by_id[d["id"]] = d
+        results = list(by_id.values())
     if not results:
         results = [dict(FALLBACK[i]) for i in range(len(FALLBACK))]
         for it in results:

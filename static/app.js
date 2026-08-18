@@ -902,8 +902,11 @@ function openDetail(id, name) {
   const row = (label, val) => `<div class="sd-row"><span>${label}</span><b>${val}</b></div>`;
   const fbk = (it.aa_perf ? ` ⚠ 性能数据（tps/首 token 时间）来自 Artificial Analysis 官网公开评测（按模型名匹配补充，数据抓取于 ${state.aaPerfAt ? fmtTime(state.aaPerfAt) : "?"}）` : "") +
     (it.idx_fallback ? ` ⚠ 能力指数为历史缓存值（本次抓取缺失时沿用上次结果，如实披露）` : "");
+  const officialNote = it.official_price
+    ? `<div class="sd-note">⚠ 本模型价格为 DeepSeek 官方定价（官方页 off-peak 档，$/100 万 tokens），已覆盖 OpenRouter 报价。</div>` : "";
   $("detail-title").textContent = "模型详情 · " + name.split(" (")[0];
   $("detail-body").innerHTML = `
+    ${officialNote}
     <div class="detail-id">${escapeHtml(it.id)}</div>
     ${row(`输入价格 (${sign()}/1M)`, fmtPrice(it.input))}
     ${row(`缓存输入 (${sign()}/1M)`, it.cache_in != null ? fmtPrice(it.cache_in) : "—（无缓存价，按原输入价计）")}
