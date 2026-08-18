@@ -19,12 +19,13 @@ jobs:
       - name: 检出源码
         uses: actions/checkout@v4
 
-      - name: 检出历史发布分支（恢复数据保证历史连续）
+      - name: 恢复历史发布数据（保证历史连续，直接读取 gh-pages 分支文件）
         run: |
           git fetch origin gh-pages --depth=1 || true
-          rm -rf prev
-          git worktree prune || true
-          git worktree add prev origin/gh-pages 2>/dev/null || true
+          git show origin/gh-pages:history.json > history.json 2>/dev/null || true
+          git show origin/gh-pages:data.json > data.json 2>/dev/null || true
+          git show origin/gh-pages:aa_perf.json > aa_perf.json 2>/dev/null || true
+          ls -la history.json data.json 2>/dev/null || true
 
       - name: 设置 Python
         uses: actions/setup-python@v5
@@ -35,13 +36,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 爬取并构建 site/
-        run: python build_static.py --restore prev
+        run: python build_static.py
 
       - name: 提交并推送 gh-pages 分支（Pages 发布源）
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git worktree remove prev --force 2>/dev/null || rm -rf prev
           cp -r site /tmp/site_out
           git branch -D gh-pages 2>/dev/null || true
           git checkout --orphan gh-pages
