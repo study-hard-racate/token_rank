@@ -1116,7 +1116,7 @@ function deltaBadgeHTML(id, isOutput) {
 // ============================================================
 // [10] 弹窗：价格趋势 / 模型详情 / 综合分明细 / 模型对比
 // ============================================================
-function openTrend(id, name) {
+async function openTrend(id, name) {
   state.trend.multi = null;
   state.trend.id = id;
   state.trend.modelName = name;
