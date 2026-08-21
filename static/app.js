@@ -1519,6 +1519,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ((localStorage.getItem("tk_theme") || "dark") === "light") {
     document.body.classList.add("light");
     $("theme").textContent = "暗色";
+  } else if (!localStorage.getItem("tk_theme") && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+    // 首次访问且系统偏好为亮色时，自动跟随系统
+    document.body.classList.add("light");
+    $("theme").textContent = "暗色";
   }
   $("search").addEventListener("input", debounce(loadData, 300));
   $("provider").addEventListener("change", loadData);
@@ -1552,6 +1556,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("rate").value = state.rate;
   }
   $("refresh").addEventListener("click", manualRefresh);
+  $("share-link").addEventListener("click", () => {
+    saveStateToURL();
+    const url = location.href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = $("share-link");
+        const old = btn.textContent;
+        btn.textContent = "已复制 ✓";
+        setTimeout(() => (btn.textContent = old), 1500);
+      });
+    } else {
+      prompt("复制当前链接：", url);
+    }
+  });
   $("est-btn").addEventListener("click", runEstimate);
   $("inM").addEventListener("keydown", (e) => { if (e.key === "Enter") runEstimate(); });
   $("outM").addEventListener("keydown", (e) => { if (e.key === "Enter") runEstimate(); });

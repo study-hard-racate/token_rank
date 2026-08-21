@@ -97,10 +97,13 @@ header h1 { font-size: 26px; }
 .table-wrap {
   background: var(--card); border: 1px solid var(--line);
   border-radius: 10px; overflow-x: auto; overflow-y: hidden;
+  max-height: 70vh; /* 允许纵向滚动 */
 }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 10px 12px; text-align: left; white-space: nowrap; }
 th { background: var(--th); color: var(--muted); font-weight: 600; }
+/* 固定表头：滚动时始终可见 */
+.table-wrap thead th { position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 0 var(--line); }
 tbody tr:nth-child(even) { background: var(--zebra); }
 tbody tr:hover { background: var(--hover); }
 td.num { text-align: right; }
