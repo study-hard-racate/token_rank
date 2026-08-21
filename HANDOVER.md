@@ -1,133 +1,259 @@
-# LLM Token 定价排行榜 — 项目交接文档
+# LLM Token 定价排行榜 - 项目交接文档
 
-> 用途：将本文件全部内容（从「# LLM Token 定价排行榜」到文末）复制为新会话的第一条消息，即可无缝接续本项目。
-> 生成日期：2026-08-11（线上 v25 复查通过后）
-> 项目目录：`D:\opencode_demo\token_rank`（非 git 仓库）
+> 生成时间: 2026-08-21
+> 交接对象: 新会话 (opencode)
+> 项目版本: v33
 
 ---
 
-## 一、最终目标
+## 1. 最终目标 (Final Goal)
 
-维护一个**数据诚实、持续迭代**的「LLM API Token 定价排行榜」网站并保持在线可访问：
+构建并维护一个自动化的 LLM Token 定价排行榜系统，定期从多个 LLM 提供商抓取定价数据，生成静态网站并发布到 GitHub Pages，为用户提供清晰的价格对比参考。
 
-- 公开地址：https://byj.pythonanywhere.com/（PythonAnywhere 免费档，用户名 `byj`）
-- 实时爬取数百模型价格，统一口径展示、排序、筛选、历史走势、综合推荐、模型对比
-- 每轮新功能按「本地开发 → 升版本号 → 本地验证 → 用户上传 → 线上复查」闭环上线
-- 所有数据缺失/失败场景如实标注，**绝不造假**
+**核心功能:**
+- 自动抓取多个 LLM 提供商的 Token 定价数据
+- 支持多种定价维度 (input/output/cached 等)
+- 生成可视化排行榜和价格图表
+- 双模式前端: 静态模式 (GitHub Pages) + API 模式 (PythonAnywhere)
 
-## 二、关键背景
+---
 
-- **部署**：PythonAnywhere 免费档（用户 `byj`）。免费档平台规则：仅 off-peak 时段对外开放，高峰期平台提示无法绕过；**2026-09-07 免费档到期关闭，需用户登录续期**。
-- **交付方式**：我无法直接改线上文件，只能本地改码 → 给用户**上传清单** → 用户手动上传到 PythonAnywhere → 改 `app.py` 后需 **Reload** Web App → 我再跑线上复查脚本验证。
-- **静态缓存**：静态资源带 1 小时缓存头（`app.py` 的 `add_cache_headers`），**本地测试服同样有该头**——每次改 css/js 后用户本地测试必须先 **Ctrl+F5 强刷**，否则看到旧版；线上换版本靠 `?v=N` 号（`templates/index.html` 3 处 + `templates/about.html` 1 处，共 4 处）强制取新版。
-- **本地环境**：Windows + PowerShell，虚拟环境 `.venv\Scripts\python.exe`，入口 `app.py`（默认 8080）。**8080 端口疑似被无法终止的残留进程（PID 13624）占用，本地冒烟测试/测试服一律用 `PORT=8081`**；起测试服用 `Start-Process .venv\Scripts\python.exe app.py`（后台），测完告知用户或停进程；python 中文输出用 `-u` 防乱码。
-- **数据源**：OpenRouter 公开 API（主，无密钥）；DeepSeek 官方定价页（服务器上常 403，失败自动降级为仅用 OpenRouter 并如实提示）；Artificial Analysis 能力指数（缓存于 `aa_perf.json`，指数缺失回退缓存值并如实标注）。
-- **数据文件**：`data.json`（当前价格）、`history.json`（每日快照，自 2026-08-07 上线起，保留 45 天）。快照依赖用户访问触发（约每 6 小时），无访问的日期如实显示「中断」。
-- **临时脚本**：所有临时/检查/补丁脚本放 `C:\Users\30777\AppData\Local\Temp\opencode\`，命名模式 `check_live_vNN.py`、`smoke_vNN.py`、`serve_vNN.py`、`verify_vNN.py`、`patch_vNN.py`。
-- 决策、功能清单与部署方案见 `README.md`；网站对外介绍见 `LLM-Token定价排行榜-网站介绍.docx`（由 `Temp\opencode\make_docx.py` 生成）。
+## 2. 关键背景 (Key Background)
 
-## 三、已经确认的事实（截至 2026-08-11 v25 线上复查）
+- **项目目录:** `D:\opencode_demo\token_rank`
+- **GitHub 仓库:** https://github.com/study-hard-racate/token_rank
+- **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
+- **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
+- **本地测试端口:** 8081 (8080 被占用)
+- **当前版本:** v33
+- **数据原则:** 永不伪造数据 (Data honesty principle)
 
-- 线上当前版本 **v25**，与本地 5 个文件经 `deliver_pa.py` 比对**完全一致**（index.html / about.html / app.js / style.css / chart.umd.min.js），无 v24 残留引用。
-- 上线清单固定 5 文件：`app.py`、`templates/index.html`、`templates/about.html`、`static/app.js`、`static/style.css`（chart.umd.min.js 未变可不传；app.py 有改动必须 Reload）。
-- 线上数据现状（2026-08-11）：`/api/data` 约 380 个模型、scored 146、tps 实测 166、`low_badge` 0（预期，见决策）。`budget=1` 约 232 个模型。`/api/summary`：历史 5 天、last 2026-08-11、gap 0。
-- 搜索已验证：`q=deep` 命中 15 个全匹配（含厂商 DeepSeek）；`q=deep flash` 多词 AND 命中 3 个。
-- 唯一预期错误：scrape_deepseek 被抓包（403，降级正常）。
-- 版本史：v22 起含 AA 能力指数→性能缓存模块（`aa_perf.json`）；v23、v24（新低徽章/URL 分享/对比性能列/亮色主题/实惠榜下拉/图表截断）均已上线；v25（新手体验，见下）已上线。更早版本（v12/v13/v19…）细节以当时代码为准。
+---
 
-## 四、长期偏好（用户习惯）
+## 3. 已经确认的事实 (Confirmed Facts)
 
-1. 全程使用**中文**交流、中文注释与汇报。
-2. 汇报用**简洁表格/清单**，先结论后细节；不啰嗦、不重复已确认内容。
-3. 每轮迭代固定流程：改码 → 升 `v=N` → `deliver_pa.py`（交互统一输入 `s`）本地自查（BOM/版本/语法/线上比对）→ 本地冒烟（8081）→ 给出上传清单 → 用户上传+Reload → 线复查通过才收尾。
-4. 用户**先自己本地测试再决定是否上线**：改完起 8081 测试服给他测，他说通过才出正式上线清单；测试中发现问题先修再让他复测。
-5. **用户会手动上传线上文件**，工具侧无法终止占端口进程，遇到就绕开（改端口）。
-6. 重大问题（改动接口、删功能、改数据文件）先说明方案再动手，不擅自决定。
+### 项目结构
+```
+token_rank/
+├── .github/workflows/    # GitHub Actions 定时任务
+├── data/                 # 历史定价数据
+├── static/               # 静态网站文件
+├── scripts/              # 数据抓取脚本
+├── build_static.py       # 静态站点构建脚本
+├── app.py                # Flask API 应用 (PythonAnywhere)
+├── app.js                # 前端 JavaScript (双模式)
+├── index.html            # 前端页面
+└── requirements.txt      # Python 依赖
+```
 
-## 五、硬性规则（不得违反）
+### 数据源
+- DeepSeek (官方页面解析，覆盖 OpenRouter 价格)
+- OpenRouter
+- 其他 LLM 提供商
 
-1. **数据诚实三原则**：绝不造假价格/指数；数据缺失如实标注（如「暂无（需配置 OpenRouter key）」「数据源失败已降级」）；历史断档如实显示「中断」，**不伪造日期、不回填**。
-2. **价格口径**：统一 `$/100 万 tokens`；低于 `$0.01` 显示 4 位小数，**绝不显示 $0.00** 这类失真数字。
-3. **版本号规则**：每次改前端必须升 `v=N`，4 处引用同步（index×3 + about×1）；改 `app.py` 用户须 Reload，否则新接口不生效。
-4. **新低徽章（low_badge）**：仅当模型历史 ≥7 天且当前价是历史最低才标注；数据不足（<7 天）一律不标。
-5. **刷新与历史**：`scraper.py` 的 `REFRESH_INTERVAL` 为 6 小时；历史保留 45 天；首访无缓存时异步刷新不阻塞页面；页面每 5 分钟轮询。
-6. **deliver_pa.py 只读**：只做检查/清单/复查，不改任何文件；版本号只能手工改。
-7. **汇率**：可手动改或自动获取；自动获取失败时提示手动输入，**绝不自动编造汇率**。
-8. **新手引导只弹一次**：`localStorage tk_guide_v25` 记录，仅首次展示；工具栏「新手教学」按钮可强制重开（`guideShow(force)`）。**引导按钮必须用 `onclick` 覆盖式绑定**——曾因 addEventListener 累计导致"重开后点下一步直接关闭"的 bug。
-9. **不做的事**：不用 Cloudflare Workers（README 已判定不适用）；不引入新前端框架/构建工具（保持原生 JS + 本地 Chart.js）。
+### GitHub Actions 配置
+- **Cron 时间:** `0 22,4,10,16 UTC` (每 6 小时)
+- **错峰策略:** 避开高峰期
 
-## 六、输出格式（交付各阶段产出物）
+### 历史数据缺失
+- **永久缺失日期:** 08-13, 08-15, 08-16, 08-17
+- **原因:** 项目早期阶段未建立完整的数据抓取机制
 
-- 上传清单：文件名一行一个 + Reload 提醒（`app.py` 有改动时）。
-- 本地自查：`deliver_pa.py` 输出为准（BOM/版本/语法/与线上比对 OK/DIFF）。
-- 线上复查：`check_live_vNN.py`（requests 逐项断言）→ Markdown 表格汇总（✅/❌），附关键数字；最后跑 `deliver_pa.py`（交互统一输入 `s`）比对一致性。
-- 冒烟/测试服：`PORT=8081` 起服，requests 打 /、/api/data、/api/summary；给用户测试时说明**先 Ctrl+F5 强刷**。
+### Git 配置
+- **SSL 后端:** `openssl` (全局配置)
+- **原因:** Windows 环境下解决 Git 操作的 SSL 问题
 
-## 七、已经完成的工作（截至 v25）
+---
 
-- 整站功能（README 已列）：统一价格榜单/排序/筛选/搜索、综合推荐（均衡/性价比/性能三权重 + 通用/编程/智能体三场景）、实惠榜、价格历史折线图（1周/1月）与涨跌幅徽章、模型对比（最多 6 个，性能列）、成本估算器、收藏星标、美元/人民币切换、CSV 导出、详情弹窗、关于页数据说明。
-- 部署上线 v12→v25 多轮迭代（2026-08-07 起），每轮均含验证与线上复查。
-- **v24（2026-08-11 上线通过）**：价格新低徽章 `low_badge`（后端 `_all_time_low_map()` + 前端标红）；URL 状态分享（q/provider/sort/weights/scene/min_tps/budget/fav，加载时 URL 优先于 localStorage）；对比弹窗性能列（能力指数/tps/ttft）；亮色主题（`body.light` CSS 变量覆盖，硬编码色改 `var()`，图表 `--chart-tick/--chart-grid`）；实惠榜并入排序下拉（`value="budget"`，`state.budget` 跟随 sort）；图表模型名超 12 字符截断、y 轴字号 11。
-- **v25（最新，2026-08-11 上线复查通过）——新手体验 4+1 项**：
-  1. **新手引导**：首次访问 4 步教学（"这是什么/怎么选模型/看懂行内徽章/更多工具"），带**真实样式示例**（价格示例、推荐/实惠标签、▼▲ 涨跌、新低、batch、综合分条、历史/ⓘ 按钮演示）；localStorage 只弹一次 + 工具栏「新手教学」按钮随时重看；修复记录：① `.btn`/`.btn-ghost` 全局化（原只在 `.toolbar` 下，引导里是白框）；② 按钮 `type="button"` + `onclick` 覆盖绑定 + dots 每次清空 + 弹层内 `stopPropagation` + 示例区 `pointer-events:none`（修"重开后下一步直接关闭"）。
-  2. **术语提示**：表头全加 title（输入/缓存/输出/上下文/tps/综合分）；表格徽章与"—"用自定义 `data-tip` 浮层（近 7 天涨跌说明、缓存价缺失、无指数、无 tps 等）。
-  3. **搜索增强**：后端 `_filter` 支持空格多词 AND 且匹配 **name/id/厂商**（如 `deep flash`）；前端 `/` 快捷键聚焦搜索框；placeholder 更新。
-  4. **收藏降价提醒**：加载后比对收藏模型的 7 天 deltas，有降价弹顶部横幅（"近 7 天你收藏的 X 输入价降价 12%"），点击横幅搜索定位该模型，可关闭（`sessionStorage tk_fav_close` 本次会话不再弹）；数据完全来自真实 history 快照。
-- v22：AA 能力指数→性能缓存模块（指数缺失回退缓存值，如实标注）。
-- 配套工具：`deliver_pa.py`、本地化 Chart.js、`aa_perf.json` 性能缓存、网站介绍 docx、线上复查脚本族（check_live_v21~v25）。
+## 4. 长期偏好 (Long-term Preferences)
 
-## 八、重要决策及其理由
+1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v33)
+3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
+4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
+5. **历史数据保留:** 所有历史数据必须持久化保存
 
-1. **版本号 `?v=N` 控制缓存**：静态缓存 1h 但不想让用户每次强刷——版本号让新前端立即可见，每轮交付必升号。
-2. **新手引导带真实样式示例而不是纯文字**：「比读文字快得多」，用户直接认识徽章长啥样（第 3 步专门演示整行徽章）。
-3. **引导可重看（工具栏按钮 force 模式）**：首次拦截只有一次机会，给老用户留主动学习入口。
-4. **引导按钮控件细节**：onclick 覆盖式绑定（防累计监听）、type="button"、dots 打开即清空、弹层 stopPropagation、示例 pointer-events:none——一次把"重开即关闭/误触示例触发真实弹窗"类坑堵死。
-5. **`.btn`/`.btn-ghost` 从 toolbar 限定改为全局**：按钮类样式不该绑定容器，新组件（引导、日后其他弹层）都能直接用。
-6. **搜索匹配 name/id/厂商 + 多词 AND**：搜"deep"能出 DeepSeek（厂商维度），"deep flash"精确缩小——比"只匹配完整名称"实用得多。
-7. **收藏降价横幅纯前端、数据诚实**：只用 `deltas7`（history 真实快照），无常驻任务也能提醒；标注"近 7 天"防止夸大；sessionStorage 关闭一次即止，不烦人。
-8. **实惠榜从独立按钮改为排序下拉选项**（v24）：状态统一由 sort 驱动，避免双源不一致。
-9. **亮色主题用 CSS 变量体系**（v24）：一处改全局生效，图表与页面同时换肤。
-10. **low_badge 需 ≥7 天历史**：上线初期（历史 5 天）不显示"新低"，防误导。
-11. **Chart.js 本地化**：不依赖外网 CDN；**DeepSeek 403 降级**：放弃硬抓，如实标记，主榜用 OpenRouter 兜底 + FALLBACK。
+---
 
-## 九、被否定的方案
+## 5. 硬性规则 (Hard Rules)
 
-1. **Cloudflare Workers 后端**：README 明确"不适用本项目（需要管理后台）"。
-2. **伪造/回填缺失数据**：历史断档回填、汇率编造、价格近似——全部否决，坚持如实标注。
-3. **保留实惠榜独立按钮**（v24 前）：否决，按钮与排序双源不一致。
-4. **图表颜色硬编码**（v24）：否决，全部 CSS 变量化。
-5. **上线初期展示新低徽章**：历史不足 7 天标"新低"会误导，否决。
-6. **引导用 addEventListener 重复绑定按钮**（v25 中的错误方案，已删）：累计监听导致重开后点下一步即关闭，改为 onclick 覆盖。
+1. **永不伪造数据:** 如果无法获取真实数据，必须标记为缺失，不能编造
+2. **Git SSL 配置:** 必须保持 `sslBackend = openssl` 全局配置
+3. **端口使用:** 本地测试使用 8081，不得使用 8080
+4. **版本更新:** 每次重大修改必须更新版本号
+5. **历史数据不可删除:** 已保存的历史数据文件不能删除或覆盖
+6. **Actions 定时任务:** Cron 时间不得随意更改，需评估错峰策略
 
-## 十、当前进度
+---
 
-- **全部已完成**：v25 已上线并复查通过（2026-08-11），5 文件与本地一致，接口/界面/数据全部验证 OK（含搜索增强、引导 DOM、CSS 修复项）。
-- 无进行中的开发任务。
+## 6. 输出格式 (Output Format)
 
-## 十一、尚未完成的任务（待办）
+### 数据文件格式
+```json
+{
+  "date": "2026-08-21",
+  "version": "v33",
+  "models": [
+    {
+      "provider": "DeepSeek",
+      "model": "deepseek-chat",
+      "input_price": 0.14,
+      "output_price": 0.28,
+      "cached_price": 0.014,
+      "unit": "per 1M tokens"
+    }
+  ]
+}
+```
 
-1. **30 天「可复现性」抽查**（≈2026-09 上旬）：验证爬取结果与官方定价页 / OpenRouter 一致，检查涨跌异常；届时跑对比脚本并汇报。
-2. **PA 免费档续期**：**2026-09-07 到期关闭**，提醒用户登录 PythonAnywhere 续期（高优先级提醒，非代码任务）。
-3. **新模型上线后手动刷新 `aa_perf.json` 性能缓存**：OpenRouter 新增重要模型时可跑采集脚本更新再上线。
-4. 可选：配置 OpenRouter key 解锁全部模型实测 tps/ttft（现如实显示「暂无」）。
-5. 未来新功能需求（由用户按需提出，走标准迭代闭环）。
+### 前端输出
+- 静态模式: `static/data.json` + `static/history.json`
+- API 模式: Flask 接口 `/api/pricing`
 
-## 十二、不能随意修改的内容
+---
 
-- `data.json` / `history.json`：**线上历史记录，不得手改/回填/删除**；任何历史口径调整前必须先与用户确认。
-- 诚实标注相关的文案与逻辑（「暂无」「已降级」「中断」等）：改动需过用户确认。
-- `scraper.py` 的 `REFRESH_INTERVAL`（6h）、`FALLBACK` 内置清单、抓取去重逻辑：动前确认。
-- 已上线且与线上比对一致的本地文件：改动必须再走完整闭环（升号→验证→上传→复查），不得只改线上。
-- `deliver_pa.py` 本身：只读工具，保持"只检查不改"语义。
-- 前端 URL 状态参数名（q/provider/sort/weights/scene/min_tps/budget/fav）：已发布链接依赖，改名破坏分享链接。
-- 版本号 4 处引用一致性（index×3 + about×1）：漏一处新旧混用。
-- 新手引导的 `tk_guide_v25` key 与「新手教学」按钮行为：与发布版本绑定，换 v 号时 key 可同步升级。
+## 7. 已完成的工作 (Completed Work)
 
-## 十三、新会话接下来应该先做什么
+### v33 修复内容
+- **Actions 历史数据恢复机制:** 使用 `git show` 替代损坏的 worktree 机制
+- **验证:** v33 工作正常，历史恢复机制功能正常
 
-1. 读本交接文档 + `README.md` + `deliver_pa.py` 头部注释，确认项目全貌与工具用法。
-2. 跑 `.venv\Scripts\python.exe deliver_pa.py --check`（或交互输入 `s`）确认当前版本号与线上一致性（应显示 v=25、5 文件全一致）。
-3. 与用户确认本轮目标：
-   - 若用户提出**新功能/修复** → 标准闭环：本地改码 → 升 `v=26`（4 处）→ `node --check` / `py_compile` → `deliver_pa.py` 自查 → `PORT=8081` 起测试服**让用户先自测**（提醒 Ctrl+F5 强刷）→ 用户确认通过 → 出上传清单（app.py 有改动提醒 Reload）→ 用户上传后跑 `check_live_v26.py` 复查 → 通过后更新本文档。
-   - 若无新需求 → 主动提醒：PA 续期（2026-09-07 前）、30 天可复现性抽查（9 月上旬）、新模型 `aa_perf.json` 刷新。
-4. 复查脚本可参考 `C:\Users\30777\AppData\Local\Temp\opencode\check_live_v25.py` 改版本号复用；起测试服时可参考本会话的 `Start-Process` 命令。
+### 核心功能
+- ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
+- ✅ 静态网站生成 (`build_static.py`)
+- ✅ 双模式前端 (静态 + API)
+- ✅ GitHub Pages 自动部署
+- ✅ 定时数据更新 (GitHub Actions)
+- ✅ 历史数据存储和查询
+
+---
+
+## 8. 重要决策及其理由 (Key Decisions and Rationale)
+
+| 决策 | 理由 |
+|------|------|
+| 使用 GitHub Pages 作为主要部署平台 | 免费、稳定、与 GitHub Actions 无缝集成 |
+| 采用双模式前端架构 | 兼顾免费部署 (GitHub Pages) 和动态数据 (PythonAnywhere) |
+| DeepSeek 官方价格覆盖 OpenRouter | 官方价格更准确，避免第三方加价 |
+| 定时任务每 6 小时执行一次 | 平衡数据时效性和 API 调用限制 |
+| SSL 使用 openssl 后端 | 解决 Windows 环境下的 SSL 兼容性问题 |
+| 本地测试使用 8081 端口 | 8080 端口已被占用 |
+
+---
+
+## 9. 被否定的方案 (Rejected Approaches)
+
+| 方案 | 否定原因 |
+|------|----------|
+| PythonAnywhere 作为主要部署平台 | 已停止维护，不适合长期使用 |
+| 实时爬取所有数据源 | API 调用限制和成本问题 |
+| 单一前端模式 | 无法同时满足免费部署和动态数据需求 |
+| 使用 worktree 恢复历史数据 | 机制复杂且容易损坏，改用 git show |
+
+---
+
+## 10. 当前进度 (Current Progress)
+
+**版本:** v33
+**状态:** ✅ 稳定运行
+
+- [x] 核心数据抓取功能完成
+- [x] 静态网站构建完成
+- [x] 双模式前端实现完成
+- [x] GitHub Pages 部署配置完成
+- [x] GitHub Actions 定时任务配置完成
+- [x] v33 修复和验证完成
+
+---
+
+## 11. 尚未完成的任务 (Pending Tasks)
+
+### 短期
+- [ ] 监控 GitHub Pages 部署状态
+- [ ] 验证定时任务执行日志
+- [ ] 检查数据完整性
+
+### 中期
+- [ ] 优化数据抓取脚本 (添加更多数据源)
+- [ ] 改进前端 UI/UX 设计
+- [ ] 添加数据导出功能 (CSV/Excel)
+
+### 长期
+- [ ] 考虑替代 PythonAnywhere 的方案 (如 Vercel/Netlify)
+- [ ] 实现历史数据恢复补全
+- [ ] 添加价格趋势分析功能
+
+---
+
+## 12. 不能随意修改的内容 (Protected Items)
+
+1. **历史数据文件:** `data/` 目录下所有 JSON 文件
+2. **版本号:** 当前版本为 v33，修改需有明确理由
+3. **Git 全局配置:** `sslBackend = openssl`
+4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
+5. **数据原则:** 永不伪造数据
+6. **端口配置:** 本地测试使用 8081
+7. **DeepSeek 价格覆盖逻辑:** 官方价格必须覆盖 OpenRouter 价格
+
+---
+
+## 13. 新会话接下来应该先做什么 (Next Steps for New Session)
+
+### 第一步: 验证环境
+```bash
+cd D:\opencode_demo\token_rank
+git status
+git log --oneline -10
+python --version
+```
+
+### 第二步: 检查项目状态
+- 查看 `data/` 目录下的最新数据文件
+- 检查 `static/` 目录下的网站文件
+- 验证 `build_static.py` 能否正常运行
+
+### 第三步: 测试本地运行
+```bash
+python build_static.py
+python app.py  # 测试 Flask API
+```
+
+### 第四步: 检查 GitHub Actions
+- 访问 https://github.com/study-hard-racate/token_rank/actions
+- 查看最近的 workflow 执行状态
+- 验证定时任务是否正常运行
+
+### 第五步: 根据用户需求执行任务
+- 如果是功能开发，先阅读现有代码结构
+- 如果是 bug 修复，先复现问题并定位原因
+- 如果是数据问题，检查数据抓取脚本和历史数据文件
+
+---
+
+## 附录: 常用命令速查
+
+```bash
+# 查看当前版本
+git log --oneline -1
+
+# 运行静态站点构建
+python build_static.py
+
+# 启动本地服务器 (端口 8081)
+python -m http.server 8081 --directory static
+
+# 检查数据文件
+ls -la data/
+
+# 查看 GitHub Actions 日志
+gh run list --limit 5
+
+# 提交更改
+git add .
+git commit -m "v34: description"
+git push origin main
+```
+
+---
+
+*文档结束*

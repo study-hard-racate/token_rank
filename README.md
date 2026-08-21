@@ -46,24 +46,11 @@ python -m venv .venv
 2. `git add .` 并 push 上去，几分钟后即获得 `https://<名字>hf.space` 公网地址
 3. 需要把端口改为 `7860`：在 HF 上把它额外暴露的端口设成 7860（Space 需以 `$PORT` 为准，已支持）
 
-### 方案三：PythonAnywhere（免费，永不休眠）
+### 方案三：Cloudflare Workers 后端 + 免费域名
 
-1. 上传代码，建一个 Python 3 Web App（Flask 模板）
-2. 在 `WSGI` 配置里 `from app import app`，把默认端口改 80
+不适用本项目（需要管理后台），请使用上面两种方案。
 
-### 方案四：Cloudflare Workers 后端 + 免费域名 不适用本项目（需要管理后台），请使用上面三种
-
-## 一键交付（PythonAnywhere 手动上传模式）
-
-本地改完代码后运行：
-
-```bash
-.venv\Scripts\python deliver_pa.py            # 检查 -> 上传清单 -> 上传并 Reload 后自动复查线上
-.venv\Scripts\python deliver_pa.py --check    # 只做本地检查 + 上传清单
-.venv\Scripts\python deliver_pa.py --verify   # 只复查线上（手动改过线上文件后自查）
-```
-
-脚本只读不改文件；版本号（`templates/index.html` 里 `?v=N`）升号仍需手工修改。
+> **注意：** PythonAnywhere 已停止维护，不再作为部署选项。当前主要部署方式为 GitHub Pages（静态模式）。
 
 ## 说明
 

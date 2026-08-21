@@ -1168,7 +1168,7 @@ function closeTrend() {
 async function manualRefresh() {
   if (state.staticMode) {
     alert("静态版数据由 GitHub Actions 定时更新（每 6 小时自动爬取）。\n如需立即更新，请到 Actions 页面手动触发 workflow。");
-    window.open("https://github.com/USER/token_rank/actions/workflows/update-data.yml", "_blank");
+    window.open("https://github.com/study-hard-racate/token_rank/actions/workflows/update-data.yml", "_blank");
     return;
   }
   setLoading(true);
