@@ -1,3 +1,27 @@
+/* ============================================================
+ * LLM Token 定价排行榜 - 前端核心模块
+ * ============================================================
+ * 本文件包含所有前端逻辑，按功能分区如下：
+ *
+ * [1] 常量与状态定义        (Line 1-44)
+ * [2] 工具函数              (Line 46-85)
+ * [3] 数据加载（API/静态）   (Line 100-340)
+ * [4] 价格变动榜            (Line 342-450)
+ * [5] 表格渲染              (Line 451-586)
+ * [6] 图表渲染              (Line 588-647)
+ * [7] 成本估算器            (Line 649-675)
+ * [8] 厂商概览与统计        (Line 677-731)
+ * [9] 筛选器与状态管理      (Line 733-816)
+ * [10] 弹窗（趋势/详情/对比）(Line 854-1347)
+ * [11] 货币与汇率           (Line 930-972)
+ * [12] CSV 导出             (Line 974-1048)
+ * [13] 收藏与新手引导       (Line 1183-1301)
+ * [14] 事件监听与初始化     (Line 1349-1541)
+ * ============================================================ */
+
+// ============================================================
+// [1] 常量与状态定义
+// ============================================================
 const CNY_DEFAULT = 7.2;
 const PAGE_SIZE = 60;
 const HISTORY_KEEP_DAYS = 45;
@@ -43,6 +67,9 @@ const state = {
   movKind: "all",
 };
 
+// ============================================================
+// [2] 工具函数
+// ============================================================
 function chartColors() {
   const cs = getComputedStyle(document.body);
   const cv = (n, d) => (cs.getPropertyValue(n) || "").trim() || d;
@@ -97,6 +124,9 @@ function monthlyCost(it) {
     + (it.output || 0) * (outM || 0);
 }
 
+// ============================================================
+// [3] 数据加载（API 模式 / 静态模式）
+// ============================================================
 async function loadData() {
   if (await detectStatic()) { await loadDataStatic(); return; }
   const params = new URLSearchParams();
@@ -347,6 +377,9 @@ function renderLoadError() {
   $("meta").innerHTML = ` <span class="err">⚠ 数据加载失败（${(state.loadError && state.loadError.message) || "网络错误"}）。数据仍停留在上次成功结果。</span>`;
 }
 
+// ============================================================
+// [4] 价格变动榜（Movers）
+// ============================================================
 async function loadMovers() {
   let deltas = null;
   try {
@@ -516,6 +549,9 @@ function buildRows() {
   return { rows, useCost };
 }
 
+// ============================================================
+// [5] 表格渲染
+// ============================================================
 function renderTable() {
   const tbody = document.querySelector("#rank tbody");
   tbody.innerHTML = "";
@@ -585,6 +621,9 @@ function renderTable() {
   }
 }
 
+// ============================================================
+// [6] 图表渲染
+// ============================================================
 function renderChart() {
   if (typeof Chart === "undefined") return;
   const cc = chartColors();
@@ -646,6 +685,9 @@ function renderChart() {
   });
 }
 
+// ============================================================
+// [7] 成本估算器
+// ============================================================
 function runEstimate() {
   const inM = parseFloat($("inM").value) || 0;
   const outM = parseFloat($("outM").value) || 0;
@@ -676,6 +718,9 @@ function runEstimate() {
 
 let _statsAt = 0;
 
+// ============================================================
+// [8] 厂商概览与历史进度
+// ============================================================
 function renderStats() {
   if (Date.now() - _statsAt < 5 * 60 * 1000) {
     if (typeof state.providerChips !== "undefined" && state.providerChips.length) {
@@ -730,6 +775,9 @@ function renderHistProg(hist) {
     <span class="hist-note">${note}</span>${gap}${gapsWarn}`;
 }
 
+// ============================================================
+// [9] 筛选器与 URL 状态管理
+// ============================================================
 function saveFilters() {
   const obj = {
     q: $("search").value,
@@ -927,6 +975,9 @@ function openDetail(id, name) {
   $("detail-modal").classList.remove("hidden");
 }
 
+// ============================================================
+// [11] 货币与汇率
+// ============================================================
 function setRate(v) {
   const n = parseFloat(v);
   if (!(n > 0)) return;
@@ -971,6 +1022,9 @@ async function autoRate(silent) {
   }
 }
 
+// ============================================================
+// [12] CSV 导出
+// ============================================================
 function csvSafe(s) {
   const t = String(s == null ? "" : s);
   return /^[=+\-@]/.test(t) ? "'" + t : t;
@@ -1059,7 +1113,10 @@ function deltaBadgeHTML(id, isOutput) {
   return ` <span class="delta ${cls}" title="${first} → ${last}" data-tip="近 7 天${isOutput ? "输出" : "输入"}价变动：$${first}/1M → $${last}/1M">${arrow}${Math.abs(pct)}%</span>`;
 }
 
-async function openTrend(id, name) {
+// ============================================================
+// [10] 弹窗：价格趋势 / 模型详情 / 综合分明细 / 模型对比
+// ============================================================
+function openTrend(id, name) {
   state.trend.multi = null;
   state.trend.id = id;
   state.trend.modelName = name;
@@ -1217,6 +1274,9 @@ function toggleCmp(id, cb) {
   updateCmpBar();
 }
 
+// ============================================================
+// [13] 收藏与新手引导
+// ============================================================
 function toggleFav(id) {
   const i = state.favs.indexOf(id);
   if (i >= 0) state.favs.splice(i, 1);
@@ -1446,6 +1506,9 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ============================================================
+// [14] 事件监听与初始化
+// ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
   guideShow();
   applyFilters();

@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Flask API 应用 — 仅用于本地开发调试。
+
+生产环境已迁移至 GitHub Pages（静态模式），本文件保留用于：
+  - 本地运行 `python app.py` 测试完整 API 功能
+  - 调试数据抓取和评分逻辑
+
+部署方式：python app.py → http://127.0.0.1:8080
+"""
+
 import json
 import os
 import time
