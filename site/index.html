@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Token 定价排行榜</title>
+  <meta name="description" content="实时爬取各大模型 API Token 费用，按输入/输出价格排序的大模型定价排行榜，支持近期价格变化查询。">
+  <meta name="theme-color" content="#0f172a">
+  <meta property="og:title" content="LLM Token 定价排行榜">
+  <meta property="og:description" content="实时爬取各大模型 API Token 单价，价格 + 能力 + 速度综合推荐，支持近期价格走势">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="static/style.css?v=32">
+</head>
+<body>
+  <div id="fav-alert" class="fav-alert hidden"></div>
+
+  <div id="guide" class="guide-overlay hidden">
+    <div class="guide-box">
+      <h2>新手教学 · 30 秒看懂</h2>
+      <p class="guide-sub">跟着示例看，比读文字快得多</p>
+      <div class="guide-body">
+        <div class="guide-step" data-step="1">
+          <div class="g-demo">
+            <div class="g-demo-row">实时收录数百个模型的 API 定价，例如：<span class="badge">DeepSeek</span> 输入价 <b class="g-em">$0.80</b> / 100 万 tokens</div>
+            <div class="g-demo-note">价格 = 调用 100 万个 token 的费用，<b>数字越小越便宜</b></div>
+          </div>
+          <p class="g-para">数据来自 OpenRouter 公开接口与官方定价页，每 6 小时自动刷新，历史按日记录。</p>
+        </div>
+        <div class="guide-step" data-step="2">
+          <div class="g-demo">
+            <div class="g-demo-row">排序下拉：默认「按输入价」从低到高；切「综合推荐」按 价格 + 能力 + 速度 打分选模型</div>
+            <div class="g-demo-row"><span class="rec-tag">推荐</span> 综合推荐前三名带此标签</div>
+            <div class="g-demo-row"><span class="rec-tag rec-budget">实惠</span> 实惠榜：暂无能力指数数据的模型按价排，不参与综合评分</div>
+          </div>
+          <p class="g-para">权重与场景（通用/编程/智能体）也可在工具栏调整。</p>
+        </div>
+        <div class="guide-step" data-step="3">
+          <div class="g-demo">
+            <div class="g-demo-row">
+              <span class="fav-btn">★</span><span class="g-tag-label">收藏</span>
+              <span class="delta down">▼ 12%</span><span class="g-tag-label">近 7 天降价</span>
+              <span class="delta up">▲ 5%</span><span class="g-tag-label">涨价</span>
+              <span class="low-tag">新低</span><span class="g-tag-label">历史最低价</span>
+              <span class="batch-tag">batch</span><span class="g-tag-label">批处理价</span>
+            </div>
+            <div class="g-demo-row">
+              <span class="score-cell"><span class="score-bar" style="width:62%"></span>78.4</span><span class="g-tag-label">综合分（点击看明细）</span>
+              <span class="trend-btn">历史</span><span class="g-tag-label">价格走势图</span>
+              <span class="copy-btn">ⓘ</span><span class="g-tag-label">模型详情</span>
+            </div>
+          </div>
+          <p class="g-para">行首 ☑ 勾选可对比最多 6 个模型；把鼠标放在徽章或表头上，还有详细解释。</p>
+        </div>
+        <div class="guide-step" data-step="4">
+          <div class="g-demo">
+            <div class="g-demo-row"><b class="g-em">成本估算器</b>：填月用量，自动按「未命中原价 + 命中缓存价」估算并排出最省的模型</div>
+            <div class="g-demo-row"><b class="g-em">导出 CSV</b>：一键下载当前榜单；<b class="g-em">收藏</b>：只显示星标模型</div>
+          </div>
+          <p class="g-para g-muted">所有数据不足之处（缓存价缺失、指数缺失、历史断档等）都会如实标注，不造假；完整口径见「关于与数据说明」页。</p>
+        </div>
+      </div>
+      <div class="guide-nav">
+        <button type="button" id="guide-prev" class="btn-sm">上一步</button>
+        <div class="guide-dots" id="guide-dots"></div>
+        <button type="button" id="guide-next" class="btn">下一步</button>
+        <button type="button" id="guide-close" class="btn btn-ghost">跳过引导</button>
+      </div>
+    </div>
+  </div>
+  <header>
+    <h1>LLM Token 定价排行榜</h1>
+    <p class="subtitle" id="subtitle">实时爬取各大模型 Token 费用 · 价格单位：美元 / 100 万 tokens</p>
+  </header>
+
+  <section class="toolbar">
+    <input id="search" type="search" placeholder="搜索模型名 / 厂商（空格分隔，如：deep）" autocomplete="off" title="支持按模型名、ID 或厂商搜索，多个词用空格分隔且需全部命中；按 / 键可快速聚焦本框" style="flex: 2;">
+    <select id="provider">
+      <option value="">全部厂商</option>
+    </select>
+    <input id="maxprice" type="number" min="0" step="0.01" placeholder="输入/输出价格上限($)">
+    <select id="sort">
+      <option value="score">综合推荐</option>
+      <option value="input">按输入价排序</option>
+      <option value="output">按输出价排序</option>
+      <option value="cost">按估算成本排序</option>
+      <option value="context">按上下文长度</option>
+      <option value="tps">按输出速度(tps)</option>
+      <option value="name">按名称</option>
+      <option value="budget">实惠榜（无指数模型按价排）</option>
+    </select>
+    <input id="min-tps" type="number" min="0" step="10" placeholder="最小tps" title="只显示输出速度不低于该值的模型（Artificial Analysis 评测）">
+    <select id="weights" title="综合推荐分权重（价格/能力/速度）">
+      <option value="balanced">均衡型 · 价格40 能力40 速度20</option>
+      <option value="value">性价比型 · 价格50 能力35 速度15</option>
+      <option value="perf">性能优先 · 价格25 能力50 速度25</option>
+    </select>
+    <select id="scene" title="综合推荐的应用场景（决定能力分取哪个指数）">
+      <option value="general">场景：通用智能</option>
+      <option value="code">场景：编程开发</option>
+      <option value="agent">场景：智能体应用</option>
+    </select>
+    <select id="currency">
+      <option value="usd">美元 $</option>
+      <option value="cny">人民币 ¥</option>
+    </select>
+    <input id="rate" type="number" min="0.1" step="0.01" placeholder="汇率 1$=?¥" title="人民币汇率，改动立即生效并保存在本机">
+    <button id="rate-auto" class="btn btn-ghost" title="自动获取最新美元兑人民币汇率">自动汇率</button>
+    <button id="export" class="btn btn-ghost" title="导出当前榜单（含当前筛选/排序）为 CSV">导出 CSV</button>
+    <button id="fav-toggle" class="btn btn-ghost" title="只看收藏的模型（点每行星标 ☆ 收藏）">收藏</button>
+    <button id="share-link" class="btn btn-ghost" title="复制当前筛选/排序状态的链接，分享给他人">分享链接</button>
+    <button id="refresh" class="btn">立即刷新</button>
+    <button id="theme" class="btn btn-ghost" title="切换深色/亮色主题">主题</button>
+    <button id="guide-reopen" class="btn btn-ghost" title="重新查看新手教学">新手教学</button>
+  </section>
+
+  <section class="meta" id="meta"></section>
+
+  <section class="grid">
+    <div class="card chart-card">
+      <h2>最便宜的 10 个模型（输入价格）</h2>
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="card stats-card" id="stats">
+      <h2>厂商概览</h2>
+    </div>
+  </section>
+
+  <section class="card estimator">
+    <h2>Token 成本估算器</h2>
+    <div class="est-row">
+      <label>月输入用量（百万 tokens）：<input id="inM" type="number" min="0" step="1" placeholder="如 50"></label>
+      <label>月输出用量（百万 tokens）：<input id="outM" type="number" min="0" step="1" placeholder="如 10"></label>
+      <label>缓存命中比例（%）：<input id="cachePct" type="number" min="0" max="100" step="5" placeholder="如 80"></label>
+      <button id="est-btn" class="btn-sm">开始估算</button>
+    </div>
+    <div id="est-result"></div>
+  </section>
+
+  <section class="card movers-card">
+    <h2>近期价格变化 <small>基于历史快照计算，点行查看走势</small></h2>
+    <div class="movers-bar">
+      <span class="mv-label">时间范围：</span>
+      <button class="range-btn2 active" data-days="7">近 7 天</button>
+      <button class="range-btn2" data-days="3">近 3 天</button>
+      <button class="range-btn2" data-days="30">近 30 天</button>
+      <span class="mv-label mv-sep">类型：</span>
+      <button class="range-btn2 active mv-kind" data-kind="all">全部</button>
+      <button class="range-btn2 mv-kind" data-kind="down">降价</button>
+      <button class="range-btn2 mv-kind" data-kind="up">涨价</button>
+      <label class="mv-check"><input type="checkbox" id="mv-moved" checked> 只看有变化的模型</label>
+      <span id="mv-hint" class="mv-hint"></span>
+    </div>
+    <div class="hist-prog" id="hist-prog"></div>
+    <div class="movers-scroll">
+      <table id="movers">
+        <thead>
+          <tr>
+            <th>#</th><th>模型</th><th>厂商</th>
+            <th>输入价(最新)</th><th>区间内变动</th>
+            <th>输出价(最新)</th><th>区间内变动</th><th>区间</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="8" class="loading-cell">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="table-wrap">
+    <table id="rank">
+      <thead>
+        <tr>
+          <th>#</th><th>对比</th><th>模型</th><th>厂商</th>
+          <th id="th-in" title="输入价：读取上下文（提问）的费用，$/100 万 tokens">输入 ($/1M)</th><th id="th-cache" title="缓存输入价：命中缓存时输入费用更低；无缓存价的模型按原输入价计">缓存输入 ($/1M)</th><th id="th-out" title="输出价：模型生成回复的费用，$/100 万 tokens">输出 ($/1M)</th><th id="th-ctx" title="上下文长度（tokens），越大可处理的内容越多">上下文</th><th id="th-tps" title="输出速度 tokens/s（Artificial Analysis 评测中位值）">tps</th><th id="th-score" title="综合推荐分（价格/能力/速度加权）">综合分</th><th>更新时间</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="11" class="loading-cell">加载中…</td></tr></tbody>
+    </table>
+    <div id="more" class="more"></div>
+  </section>
+
+  <footer>数据来源：OpenRouter API / 官方定价页 · 每 6 小时自动刷新 · 价格历史按日记录 · 综合分为价格/能力/速度加权（能力指数来自 Artificial Analysis，速度来自 OpenRouter 实测吞吐排名，指数缺失时沿用上次缓存）· 缓存输入价为缓存命中优惠价 + 未命中按原输入价计 · <a href="about.html">关于与数据说明</a></footer>
+
+  <div id="trend-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="trend-title">价格趋势</h2>
+        <button id="trend-export" class="btn-sm" title="导出该模型按日价格数据为 CSV 文件">导出 CSV</button>
+        <div class="modal-range">
+          <button class="range-btn active" id="range-7">近一周</button>
+          <button class="range-btn" id="range-30">近一月</button>
+        </div>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <div id="trend-body"><canvas id="trend-chart"></canvas></div>
+    </div>
+  </div>
+
+  <div id="detail-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="detail-title">模型详情</h2>
+        <button class="modal-close" id="detail-close">×</button>
+      </div>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <div id="score-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="score-title">综合分明细</h2>
+        <button class="modal-close" id="score-close">×</button>
+      </div>
+      <div id="score-body"></div>
+    </div>
+  </div>
+
+  <div id="cmp-modal" class="modal hidden">
+    <div class="modal-box modal-wide">
+      <div class="modal-head">
+        <h2 id="cmp-title">模型对比</h2>
+        <button class="modal-close" id="cmp-close">×</button>
+      </div>
+      <div id="cmp-body"></div>
+    </div>
+  </div>
+
+  <div id="cmp-bar" class="cmp-bar hidden">
+    <span id="cmp-count">已选 0 个</span>
+    <button id="cmp-trend" class="btn-sm" title="把所选模型的价格走势画在同一张图">走势对比</button>
+    <button id="cmp-open" class="btn-sm">对比所选</button>
+    <button id="cmp-clear" class="btn-sm">清空</button>
+  </div>
+
+  <script src="static/chart.umd.min.js?v=32"></script>
+  <script src="static/app.js?v=32"></script>
+</body>
+</html>
