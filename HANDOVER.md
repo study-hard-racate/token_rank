@@ -1,8 +1,8 @@
 # LLM Token 定价排行榜 - 项目交接文档
 
 > 生成时间: 2026-08-21
-> 交接对象: 新会话 (opencode)
-> 项目版本: v33
+> 交接对象: 新会话
+> 项目版本: v40
 
 ---
 
@@ -20,39 +20,46 @@
 
 ## 2. 关键背景 (Key Background)
 
-- **项目目录:** `D:\opencode_demo\token_rank`
+- **项目目录:** `D:\deepseek harnes\token_rank`（以此为准）
 - **GitHub 仓库:** https://github.com/study-hard-racate/token_rank
 - **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
 - **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
 - **本地测试端口:** 8081 (8080 被占用)
-- **当前版本:** v33
+- **当前版本:** v40
 - **数据原则:** 永不伪造数据 (Data honesty principle)
 
 ---
 
 ## 3. 已经确认的事实 (Confirmed Facts)
 
-### 项目结构
+### 项目结构（实际目录，以此为准）
 ```
 token_rank/
-├── .github/workflows/    # GitHub Actions 定时任务
-├── data/                 # 历史定价数据
-├── static/               # 静态网站文件
-├── scripts/              # 数据抓取脚本
+├── .github/workflows/    # GitHub Actions 定时任务 (update-data.yml)
+├── site/                 # 构建产物（= gh-pages 分支根）
+├── static/               # 前端静态资源 (app.js, style.css, chart.umd.min.js, favicon.svg)
+├── templates/            # 页面模板 (index.html 等)
+├── tests/                # Python 单元测试 (test_scraper.py)
 ├── build_static.py       # 静态站点构建脚本
-├── app.py                # Flask API 应用 (PythonAnywhere)
-├── app.js                # 前端 JavaScript (双模式)
-├── index.html            # 前端页面
-└── requirements.txt      # Python 依赖
+├── app.py                # Flask API 应用 (PythonAnywhere，已弃用)
+├── scraper.py            # 数据抓取脚本
+├── requirements.txt      # Python 依赖
+├── .gitignore            # Git 忽略规则
+├── README.md
+├── HANDOVER.md           # 本交接文档
+├── data.json             # 当前定价数据
+├── history.json          # 历史定价数据
+└── aa_perf.json          # AA 性能数据
 ```
 
 ### 数据源
-- DeepSeek (官方页面解析，覆盖 OpenRouter 价格)
-- OpenRouter
-- 其他 LLM 提供商
+- OpenRouter API (主要数据源)
+- DeepSeek 官方定价页 (价格覆盖 OpenRouter)
+- Artificial Analysis (性能数据 aa_perf)
 
 ### GitHub Actions 配置
 - **Cron 时间:** `0 22,4,10,16 UTC` (每 6 小时)
+- **触发方式:** 定时 + push to main + 手动触发 (push 即部署)
 - **错峰策略:** 避开高峰期
 
 ### 历史数据缺失
@@ -68,7 +75,7 @@ token_rank/
 ## 4. 长期偏好 (Long-term Preferences)
 
 1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
-2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v33)
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v40)
 3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
 4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
 5. **历史数据保留:** 所有历史数据必须持久化保存
@@ -88,35 +95,80 @@ token_rank/
 
 ## 6. 输出格式 (Output Format)
 
-### 数据文件格式
+> 以下为**实际数据结构**（与旧交接版假想的 `date/version/models` + `input_price/output_price/cached_price` 不同，以此为准）。价格单位为 **USD / 1M tokens**；字段可能为 `null`（表示该项缺失，绝不伪造）。
+
+### 数据文件: `data.json`（当前定价快照）
 ```json
 {
-  "date": "2026-08-21",
-  "version": "v33",
-  "models": [
+  "updated": "2026-08-23T07:41:38.846306+00:00",
+  "errors": [],
+  "aa_perf_at": "2026-08-10T12:03:02.061024+00:00",
+  "items": [
     {
-      "provider": "DeepSeek",
-      "model": "deepseek-chat",
-      "input_price": 0.14,
-      "output_price": 0.28,
-      "cached_price": 0.014,
-      "unit": "per 1M tokens"
+      "id": "inclusionai/ling-2.6-flash",
+      "name": "inclusionAI: Ling-2.6-flash (InclusionAI)",
+      "provider": "InclusionAI",
+      "input": 0.01,
+      "output": 0.03,
+      "cache_in": 0.002,
+      "context": 262144,
+      "intel": 14.2,
+      "code": 25.3,
+      "agentic": 2.3,
+      "tps": null,
+      "ttft": null,
+      "updated": "2026-08-23T07:41:37.059455+00:00",
+      "speed_rank": 70,
+      "speed_pct": 83.6,
+      "ps": 100.0,
+      "pf": {"general": {"v": 14.2, "src": "intel"}, "code": {"v": 25.3, "src": "code"}, "agent": {"v": 2.3, "src": "agentic"}},
+      "sp": 83.6
     }
   ]
 }
 ```
 
+`items[]` 字段说明:
+- `id` / `name` / `provider`: 模型标识（形如 `provider/model`）、显示名、提供商
+- `input` / `output` / `cache_in`: 价格（USD / 1M tokens），`null` 表示该项缺失
+- `context`: 上下文窗口（tokens）
+- `intel` / `code` / `agentic`: 三类任务的性能评分
+- `tps` / `ttft`: 每秒 tokens / 首 token 延迟
+- `speed_rank` / `speed_pct`: 速度排名与百分位
+- `ps` / `sp`: 价格分 / 速度分
+- `pf`: 各维度性能取值及来源（`src` = intel / code / agentic）
+- `official_price`（可选布尔）: 该条目已被 DeepSeek 官方价覆盖
+
+### 数据文件: `history.json`（历史价，按键模型索引）
+```json
+{
+  "deepseek/deepseek-chat": [
+    {"date": "2026-08-07", "input": 0.27, "output": 1.10},
+    {"date": "2026-08-08", "input": 0.27, "output": 1.10}
+  ]
+}
+```
+键为模型 `id`，值为按日期升序的 `{date, input, output}` 记录数组（仅含 input/output，无 cache）。
+
 ### 前端输出
-- 静态模式: `static/data.json` + `static/history.json`
-- API 模式: Flask 接口 `/api/pricing`
+- 构建产物: `build_static.py` 生成 `site/`（即 gh-pages 分支根），含 `data.json`、`history.json`、`aa_perf.json`、`static/*`、`index.html`、`about.html`
+- 静态模式: 读取 `site/data.json` + `site/history.json`
+- API 模式: Flask 接口 `/api/pricing`（PythonAnywhere，已弃用）
 
 ---
 
 ## 7. 已完成的工作 (Completed Work)
 
-### v33 修复内容
-- **Actions 历史数据恢复机制:** 使用 `git show` 替代损坏的 worktree 机制
-- **验证:** v33 工作正常，历史恢复机制功能正常
+### v34-v40 完成内容
+| 版本 | 内容 |
+|------|------|
+| v34 | 清理 PythonAnywhere 引用，完善 `.gitignore` |
+| v35 | 高优先级优化（删除废弃配置、修复 app.py 说明） |
+| v36 | 三项 UX 优化（URL 分享、深色模式自动切换、固定表头） |
+| v37 | Actions 增加 push 触发，推送即部署 |
+| v38 | 修复 3 处 providerChips 空引用 Bug |
+| v39 | 移动端适配 + 三项 UX 优化 |
+| v40 | 添加 Python 单元测试（6/6 通过） |
 
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
@@ -154,7 +206,7 @@ token_rank/
 
 ## 10. 当前进度 (Current Progress)
 
-**版本:** v33
+**版本:** v40
 **状态:** ✅ 稳定运行
 
 - [x] 核心数据抓取功能完成
@@ -162,7 +214,8 @@ token_rank/
 - [x] 双模式前端实现完成
 - [x] GitHub Pages 部署配置完成
 - [x] GitHub Actions 定时任务配置完成
-- [x] v33 修复和验证完成
+- [x] v34-v40 修复和优化完成
+- [x] Python 单元测试完成（6/6 通过）
 
 ---
 
@@ -187,8 +240,8 @@ token_rank/
 
 ## 12. 不能随意修改的内容 (Protected Items)
 
-1. **历史数据文件:** `data/` 目录下所有 JSON 文件
-2. **版本号:** 当前版本为 v33，修改需有明确理由
+1. **历史数据文件:** 根目录下 `data.json` / `history.json` / `aa_perf.json`（不可删除或覆盖）
+2. **版本号:** 当前版本为 v40，修改需有明确理由
 3. **Git 全局配置:** `sslBackend = openssl`
 4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
 5. **数据原则:** 永不伪造数据
@@ -201,21 +254,21 @@ token_rank/
 
 ### 第一步: 验证环境
 ```bash
-cd D:\opencode_demo\token_rank
+cd D:\deepseek harnes\token_rank
 git status
 git log --oneline -10
 python --version
 ```
 
 ### 第二步: 检查项目状态
-- 查看 `data/` 目录下的最新数据文件
+- 查看根目录 `data.json` / `history.json` / `aa_perf.json` 的最新数据
 - 检查 `static/` 目录下的网站文件
 - 验证 `build_static.py` 能否正常运行
 
 ### 第三步: 测试本地运行
 ```bash
 python build_static.py
-python app.py  # 测试 Flask API
+python -m http.server 8081 --directory site
 ```
 
 ### 第四步: 检查 GitHub Actions
@@ -240,17 +293,17 @@ git log --oneline -1
 python build_static.py
 
 # 启动本地服务器 (端口 8081)
-python -m http.server 8081 --directory static
+python -m http.server 8081 --directory site
 
 # 检查数据文件
-ls -la data/
+ls -la data.json history.json aa_perf.json
 
 # 查看 GitHub Actions 日志
 gh run list --limit 5
 
 # 提交更改
 git add .
-git commit -m "v34: description"
+git commit -m "v41: description"
 git push origin main
 ```
 
