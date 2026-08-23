@@ -84,6 +84,7 @@ header h1 { font-size: 26px; }
 .card {
   background: var(--card); border: 1px solid var(--line);
   border-radius: 10px; padding: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
 }
 .card h2 { font-size: 15px; margin-bottom: 10px; color: var(--accent); }
 .chart-card canvas { max-height: 260px; }
@@ -96,8 +97,9 @@ header h1 { font-size: 26px; }
 
 .table-wrap {
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 10px; overflow-x: auto; overflow-y: hidden;
-  max-height: 70vh; /* 允许纵向滚动 */
+  border-radius: 10px; overflow: auto; /* 横向 + 纵向均可滚动 */
+  max-height: 70vh;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
 }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 10px 12px; text-align: left; white-space: nowrap; }
@@ -106,6 +108,11 @@ th { background: var(--th); color: var(--muted); font-weight: 600; }
 .table-wrap thead th { position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 0 var(--line); }
 tbody tr:nth-child(even) { background: var(--zebra); }
 tbody tr:hover { background: var(--hover); }
+/* 模型名列：在横向滚动时保持可见（sticky 左列），并让表头左上角单元格双 sticky */
+#rank thead th:nth-child(3) { position: sticky; top: 0; left: 0; z-index: 12; }
+#rank tbody td:nth-child(3) { position: sticky; left: 0; z-index: 6; background: var(--card); }
+#rank tbody tr:nth-child(even) td:nth-child(3) { background: var(--zebra); }
+#rank tbody tr:hover td:nth-child(3) { background: var(--hover); }
 td.num { text-align: right; }
 .rank-1 { color: #fbbf24; font-weight: 700; }
 .rank-2 { color: var(--muted); font-weight: 700; }
