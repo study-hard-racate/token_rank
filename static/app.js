@@ -746,7 +746,7 @@ function renderStats() {
       renderProvider();
       renderHistProg(data.history || {});
     } catch (e) {
-      if (state.providerChips.length) renderProvider();
+      if (state.providerChips && state.providerChips.length) renderProvider();
     }
   })();
 }
@@ -888,7 +888,7 @@ function renderProvider() {
 }
 
 function pcMove(steps) {
-  if (!state.providerChips.length) return;
+  if (!state.providerChips || !state.providerChips.length) return;
   const n = state.providerChips.length;
   state.pcIndex = (state.pcIndex + steps + n) % n;
   renderProvider();
@@ -1584,7 +1584,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("range-7").addEventListener("click", () => setRange(7));
   $("range-30").addEventListener("click", () => setRange(30));
   $("stats").addEventListener("wheel", (e) => {
-    if (!state.providerChips.length) return;
+    if (!state.providerChips || !state.providerChips.length) return;
     e.preventDefault();
     pcMove(e.deltaY > 0 ? 1 : -1);
   }, { passive: false });
