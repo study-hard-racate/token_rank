@@ -1524,7 +1524,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.body.classList.add("light");
     $("theme").textContent = "暗色";
   }
-  $("search").addEventListener("input", debounce(loadData, 300));
+  $("search").addEventListener("input", debounce(loadData, 200));
   $("provider").addEventListener("change", loadData);
   $("maxprice").addEventListener("change", loadData);
   $("sort").addEventListener("change", () => {
