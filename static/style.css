@@ -267,7 +267,7 @@ footer a:hover { text-decoration: underline; }
 
 .modal-wide { width: min(1100px, 96vw); }
 .cmp-scroll {
-  max-height: 68vh; overflow: auto;
+  overflow: auto;
   border: 1px solid var(--line); border-radius: 8px;
 }
 #cmp-table { font-size: 13px; border-collapse: collapse; }
