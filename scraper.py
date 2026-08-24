@@ -478,7 +478,7 @@ def wayback_backfill():
 FALLBACK_MARKER = "all sources failed, using built-in fallback"
 
 AA_PERF_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "aa_perf.json")
-AA_PERF_MAX_AGE = 30 * 24 * 3600  # AA 性能缓存有效期（秒），30 天内不重复抓取
+AA_PERF_MAX_AGE = 24 * 3600  # AA 性能缓存有效期（秒），24 小时内不重复抓取，超期则重新拉取
 AA_PAGE = "https://artificialanalysis.ai/models/claude-opus-5"
 AA_SUFFIX = ("-non-reasoning", "-thinking", "-adaptive", "-xhigh", "-high", "-medium",
              "-low", "-minimal", "-flash", "-ultra", "-max", "-pro", "-fast", "-preview")
