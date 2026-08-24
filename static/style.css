@@ -39,13 +39,24 @@ body {
   color: var(--text);
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   padding: 24px 16px 40px;
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
-header { text-align: center; margin-bottom: 20px; }
-header h1 { font-size: 26px; }
+header { text-align: center; margin-bottom: 22px; }
+header h1 {
+  font-size: 30px; font-weight: 700; letter-spacing: .3px;
+  background: linear-gradient(90deg, var(--accent) 0%, #818cf8 55%, #c084fc 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
 .subtitle { color: var(--muted); margin-top: 6px; font-size: 13px; }
+.eyebrow {
+  display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--accent);
+  padding: 3px 12px; border: 1px solid var(--accent); border-radius: 20px;
+  margin-bottom: 10px; background: rgba(56, 189, 248, .08);
+}
 
 .toolbar {
   display: flex; gap: 10px; flex-wrap: wrap;
@@ -71,6 +82,13 @@ header h1 { font-size: 26px; }
 }
 .btn-ghost.active { background: var(--accent); color: var(--accent-fg); }
 .toolbar .btn, .toolbar .btn-ghost { flex: 0 0 auto; }
+/* 交互反馈：统一控件高度、聚焦环、按钮微浮动 */
+.toolbar input, .toolbar select, .toolbar #rate { min-height: 40px; }
+.toolbar input:focus, .toolbar select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56, 189, 248, .16);
+}
+.btn, .btn-ghost, .btn-sm, .range-btn, .range-btn2 { transition: transform .12s ease, filter .12s ease, background .12s ease; }
+.toolbar .btn:hover, .toolbar .btn-ghost:hover, .btn-sm:hover { transform: translateY(-1px); }
 /* 工具栏窄屏折叠：桌面端全部展示；移动端默认收起，点「筛选」展开 */
 #tb-toggle { display: none; }
 .toolbar .toolbar-more { display: contents; }
@@ -89,7 +107,10 @@ header h1 { font-size: 26px; }
   border-radius: 10px; padding: 14px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
 }
-.card h2 { font-size: 15px; margin-bottom: 10px; color: var(--accent); }
+.card h2 {
+  font-size: 15px; margin-bottom: 12px; color: var(--accent);
+  padding-left: 10px; border-left: 3px solid var(--accent); line-height: 1.3;
+}
 .chart-card canvas { max-height: 260px; }
 .stat-row {
   display: flex; justify-content: space-between; padding: 6px 0;
@@ -109,6 +130,7 @@ th, td { padding: 10px 12px; text-align: left; white-space: nowrap; }
 th { background: var(--th); color: var(--muted); font-weight: 600; }
 /* 固定表头：滚动时始终可见 */
 .table-wrap thead th { position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 0 var(--line); }
+tbody tr { transition: background .12s ease; }
 tbody tr:nth-child(even) { background: var(--zebra); }
 tbody tr:hover { background: var(--hover); }
 /* 模型名列：在横向滚动时保持可见（sticky 左列），并让表头左上角单元格双 sticky */
