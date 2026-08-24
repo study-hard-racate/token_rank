@@ -542,6 +542,21 @@ function renderTable() {
   $("th-score").title = isScore
     ? `${SCENE_TIP[state.scene]} · 权重 ${WEIGHT_TIP[state.weights]}`
     : "综合推荐分（价格/能力/速度加权）";
+  // 表头排序高亮 + 方向箭头
+  const sortMap = {
+    input: ["th-in", "▲"], output: ["th-out", "▲"], cost: ["th-in", "▲"], name: ["th-name", "▲"],
+    context: ["th-ctx", "▼"], tps: ["th-tps", "▼"], score: ["th-score", "▼"]
+  };
+  const effSort = state.budget ? "input" : $("sort").value;
+  document.querySelectorAll("#rank thead th").forEach((th) => {
+    th.classList.remove("th-active");
+    th.removeAttribute("data-arrow");
+  });
+  const sm = sortMap[effSort];
+  if (sm) {
+    const el = document.getElementById(sm[0]);
+    if (el) { el.classList.add("th-active"); el.setAttribute("data-arrow", sm[1]); }
+  }
   visible.forEach(({ i: it, c }, i) => {
     const cls = i === 0 ? "rank-1" : i === 1 ? "rank-2" : i === 2 ? "rank-3" : "";
     const tr = document.createElement("tr");
@@ -1355,6 +1370,13 @@ document.addEventListener("change", (e) => {
 });
 
 document.addEventListener("click", (e) => {
+  const thSort = e.target.closest("th[data-sort]");
+  if (thSort) {
+    const v = thSort.dataset.sort;
+    const sel = $("sort");
+    if (sel) { sel.value = v; state.budget = (v === "budget"); loadData(); }
+    return;
+  }
   const sc = e.target.closest(".score-click");
   if (sc) {
     openScoreDetail(sc.dataset.scoreid, sc.dataset.name);
@@ -1453,6 +1475,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("theme").addEventListener("click", toggleTheme);
   const gr = $("guide-reopen");
   if (gr) gr.addEventListener("click", () => guideShow(true));
+  // 工具栏窄屏折叠
+  const tb = $("toolbar");
+  const tbToggle = $("tb-toggle");
+  if (tbToggle) {
+    tbToggle.addEventListener("click", () => {
+      const open = tb.classList.toggle("open");
+      tbToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      tbToggle.textContent = open ? "✕ 收起" : "☰ 筛选";
+    });
+    window.addEventListener("resize", () => {
+      if (!window.matchMedia("(max-width: 768px)").matches) tb.classList.remove("open");
+    });
+  }
+  const gx = $("guide-x");
+  if (gx) gx.addEventListener("click", guideDone);
   if ((localStorage.getItem("tk_theme") || "dark") === "light") {
     document.body.classList.add("light");
     $("theme").textContent = "暗色";

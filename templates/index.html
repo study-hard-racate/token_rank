@@ -10,13 +10,14 @@
   <meta property="og:description" content="实时爬取各大模型 API Token 单价，价格 + 能力 + 速度综合推荐，支持近期价格走势">
   <meta property="og:type" content="website">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/style.css?v=33">
+  <link rel="stylesheet" href="/static/style.css?v=34">
 </head>
 <body>
   <div id="fav-alert" class="fav-alert hidden"></div>
 
   <div id="guide" class="guide-overlay hidden">
     <div class="guide-box">
+      <button id="guide-x" class="guide-x" title="关闭" aria-label="关闭">×</button>
       <h2>新手教学 · 30 秒看懂</h2>
       <p class="guide-sub">跟着示例看，比读文字快得多</p>
       <div class="guide-body">
@@ -73,45 +74,48 @@
     <p class="subtitle" id="subtitle">实时爬取各大模型 Token 费用 · 价格单位：美元 / 100 万 tokens</p>
   </header>
 
-  <section class="toolbar">
+  <section class="toolbar" id="toolbar">
+    <button id="tb-toggle" class="btn btn-ghost" title="展开/收起筛选工具" aria-expanded="false">☰ 筛选</button>
     <input id="search" type="search" placeholder="搜索模型名 / 厂商（空格分隔，如：deep）" autocomplete="off" title="支持按模型名、ID 或厂商搜索，多个词用空格分隔且需全部命中；按 / 键可快速聚焦本框" style="flex: 2;">
-    <select id="provider">
-      <option value="">全部厂商</option>
-    </select>
-    <input id="maxprice" type="number" min="0" step="0.01" placeholder="输入/输出价格上限($)">
-    <select id="sort">
-      <option value="score">综合推荐</option>
-      <option value="input">按输入价排序</option>
-      <option value="output">按输出价排序</option>
-      <option value="cost">按估算成本排序</option>
-      <option value="context">按上下文长度</option>
-      <option value="tps">按输出速度(tps)</option>
-      <option value="name">按名称</option>
-      <option value="budget">实惠榜（无指数模型按价排）</option>
-    </select>
-    <input id="min-tps" type="number" min="0" step="10" placeholder="最小tps" title="只显示输出速度不低于该值的模型（Artificial Analysis 评测）">
-    <select id="weights" title="综合推荐分权重（价格/能力/速度）">
-      <option value="balanced">均衡型 · 价格40 能力40 速度20</option>
-      <option value="value">性价比型 · 价格50 能力35 速度15</option>
-      <option value="perf">性能优先 · 价格25 能力50 速度25</option>
-    </select>
-    <select id="scene" title="综合推荐的应用场景（决定能力分取哪个指数）">
-      <option value="general">场景：通用智能</option>
-      <option value="code">场景：编程开发</option>
-      <option value="agent">场景：智能体应用</option>
-    </select>
-    <select id="currency">
-      <option value="usd">美元 $</option>
-      <option value="cny">人民币 ¥</option>
-    </select>
-    <input id="rate" type="number" min="0.1" step="0.01" placeholder="汇率 1$=?¥" title="人民币汇率，改动立即生效并保存在本机">
-    <button id="rate-auto" class="btn btn-ghost" title="自动获取最新美元兑人民币汇率">自动汇率</button>
-    <button id="export" class="btn btn-ghost" title="导出当前榜单（含当前筛选/排序）为 CSV">导出 CSV</button>
-    <button id="fav-toggle" class="btn btn-ghost" title="只看收藏的模型（点每行星标 ☆ 收藏）">收藏</button>
-    <button id="share-link" class="btn btn-ghost" title="复制当前筛选/排序状态的链接，分享给他人">分享链接</button>
-    <button id="refresh" class="btn">立即刷新</button>
-    <button id="theme" class="btn btn-ghost" title="切换深色/亮色主题">主题</button>
-    <button id="guide-reopen" class="btn btn-ghost" title="重新查看新手教学">新手教学</button>
+    <div id="toolbar-more" class="toolbar-more">
+      <select id="provider">
+        <option value="">全部厂商</option>
+      </select>
+      <input id="maxprice" type="number" min="0" step="0.01" placeholder="输入/输出价格上限($)">
+      <select id="sort">
+        <option value="score">综合推荐</option>
+        <option value="input">按输入价排序</option>
+        <option value="output">按输出价排序</option>
+        <option value="cost">按估算成本排序</option>
+        <option value="context">按上下文长度</option>
+        <option value="tps">按输出速度(tps)</option>
+        <option value="name">按名称</option>
+        <option value="budget">实惠榜（无指数模型按价排）</option>
+      </select>
+      <input id="min-tps" type="number" min="0" step="10" placeholder="最小tps" title="只显示输出速度不低于该值的模型（Artificial Analysis 评测）">
+      <select id="weights" title="综合推荐分权重（价格/能力/速度）">
+        <option value="balanced">均衡型 · 价格40 能力40 速度20</option>
+        <option value="value">性价比型 · 价格50 能力35 速度15</option>
+        <option value="perf">性能优先 · 价格25 能力50 速度25</option>
+      </select>
+      <select id="scene" title="综合推荐的应用场景（决定能力分取哪个指数）">
+        <option value="general">场景：通用智能</option>
+        <option value="code">场景：编程开发</option>
+        <option value="agent">场景：智能体应用</option>
+      </select>
+      <select id="currency">
+        <option value="usd">美元 $</option>
+        <option value="cny">人民币 ¥</option>
+      </select>
+      <input id="rate" type="number" min="0.1" step="0.01" placeholder="汇率 1$=?¥" title="人民币汇率，改动立即生效并保存在本机">
+      <button id="rate-auto" class="btn btn-ghost" title="自动获取最新美元兑人民币汇率">自动汇率</button>
+      <button id="export" class="btn btn-ghost" title="导出当前榜单（含当前筛选/排序）为 CSV">导出 CSV</button>
+      <button id="fav-toggle" class="btn btn-ghost" title="只看收藏的模型（点每行星标 ☆ 收藏）">收藏</button>
+      <button id="share-link" class="btn btn-ghost" title="复制当前筛选/排序状态的链接，分享给他人">分享链接</button>
+      <button id="refresh" class="btn">立即刷新</button>
+      <button id="theme" class="btn btn-ghost" title="切换深色/亮色主题">主题</button>
+      <button id="guide-reopen" class="btn btn-ghost" title="重新查看新手教学">新手教学</button>
+    </div>
   </section>
 
   <section class="meta" id="meta"></section>
@@ -170,8 +174,8 @@
     <table id="rank">
       <thead>
         <tr>
-          <th>#</th><th>对比</th><th>模型</th><th>厂商</th>
-          <th id="th-in" title="输入价：读取上下文（提问）的费用，$/100 万 tokens">输入 ($/1M)</th><th id="th-cache" title="缓存输入价：命中缓存时输入费用更低；无缓存价的模型按原输入价计">缓存输入 ($/1M)</th><th id="th-out" title="输出价：模型生成回复的费用，$/100 万 tokens">输出 ($/1M)</th><th id="th-ctx" title="上下文长度（tokens），越大可处理的内容越多">上下文</th><th id="th-tps" title="输出速度 tokens/s（Artificial Analysis 评测中位值）">tps</th><th id="th-score" title="综合推荐分（价格/能力/速度加权）">综合分</th><th>更新时间</th>
+          <th>#</th><th>对比</th><th id="th-name" data-sort="name" class="sortable" title="按模型名称排序">模型</th><th>厂商</th>
+          <th id="th-in" data-sort="input" class="sortable" title="输入价：读取上下文（提问）的费用，$/100 万 tokens（点击排序）">输入 ($/1M)</th><th id="th-cache" title="缓存输入价：命中缓存时输入费用更低；无缓存价的模型按原输入价计">缓存输入 ($/1M)</th><th id="th-out" data-sort="output" class="sortable" title="输出价：模型生成回复的费用，$/100 万 tokens（点击排序）">输出 ($/1M)</th><th id="th-ctx" data-sort="context" class="sortable" title="上下文长度（tokens），越大可处理的内容越多（点击排序）">上下文</th><th id="th-tps" data-sort="tps" class="sortable" title="输出速度 tokens/s（Artificial Analysis 评测中位值，点击排序）">tps</th><th id="th-score" data-sort="score" class="sortable" title="综合推荐分（价格/能力/速度加权，点击排序）">综合分</th><th>更新时间</th>
         </tr>
       </thead>
       <tbody><tr><td colspan="11" class="loading-cell">加载中…</td></tr></tbody>
@@ -234,6 +238,6 @@
   </div>
 
   <script src="/static/chart.umd.min.js?v=32"></script>
-  <script src="/static/app.js?v=32"></script>
+  <script src="/static/app.js?v=34"></script>
 </body>
 </html>
