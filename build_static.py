@@ -89,7 +89,7 @@ def copy_frontend():
                 "本站部署于 GitHub Pages，由 Actions 定时更新，无 off-peak 时段限制。")
         with open(os.path.join(SITE, dst), "w", encoding="utf-8") as f:
             f.write(html)
-    for name in ("app.js", "style.css", "chart.umd.min.js", "favicon.svg"):
+    for name in ("app.js", "utils.js", "style.css", "chart.umd.min.js", "favicon.svg"):
         shutil.copyfile(os.path.join(ROOT, "static", name), os.path.join(SITE, "static", name))
     info("前端已拷贝到 site/（相对路径化）")
 

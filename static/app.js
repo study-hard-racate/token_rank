@@ -54,11 +54,6 @@ function chartColors() {
   };
 }
 
-function chartLabel(n) {
-  const t = String(n || "").split(" (")[0];
-  return t.length > 12 ? t.slice(0, 12) + "…" : t;
-}
-
 function readFavs() {
   try {
     const v = JSON.parse(localStorage.getItem("tk_favs") || "[]");
@@ -69,7 +64,6 @@ function saveFavs() {
   try { localStorage.setItem("tk_favs", JSON.stringify(state.favs)); } catch (e) {}
 }
 
-const $ = (id) => document.getElementById(id);
 const sign = () => (state.currency === "cny" ? "¥" : "$");
 const rate = () => (state.currency === "cny" ? state.rate : 1);
 
@@ -78,15 +72,6 @@ function fmtPrice(n) {
   const v = Number(n * rate());
   const fixed = v >= 1 ? v.toFixed(2) : v >= 0.01 ? v.toFixed(2) : v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   return sign() + fixed;
-}
-function fmtCtx(n) {
-  if (!(n > 0)) return "—";
-  return n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : (n >= 1000 ? (n / 1000).toFixed(0) + "K" : String(n));
-}
-function fmtTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return isNaN(d) ? "—" : d.toLocaleString("zh-CN", { hour12: false });
 }
 function monthlyCost(it) {
   const { inM, outM } = state.estimate || {};
@@ -861,11 +846,6 @@ function pcMove(steps) {
   renderProvider();
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
 function cacheCell(it) {
   if (it.cache_in == null) {
     return `<span class="score-none" data-tip="无缓存命中优惠价，成本按原输入价计">—</span>`;
@@ -984,11 +964,6 @@ async function autoRate(silent) {
       btn.disabled = false;
     }
   }
-}
-
-function csvSafe(s) {
-  const t = String(s == null ? "" : s);
-  return /^[=+\-@]/.test(t) ? "'" + t : t;
 }
 
 function exportCSV() {
@@ -1571,8 +1546,3 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   setInterval(() => { if (document.visibilityState === "visible") loadData(); }, 5 * 60 * 1000);
 });
-
-function debounce(fn, ms) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), ms); };
-}
