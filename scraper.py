@@ -216,33 +216,109 @@ def scrape_deepseek():
     return out
 
 
+ANTHROPIC_PRICE_PAGE = "https://docs.anthropic.com/en/docs/about-claude/pricing"
+
+
+def _anthropic_slug(name):
+    """把 Anthropic 官方型号名改写成 OpenRouter 的 slug（'Claude Opus 5' -> 'claude-opus-5'）。"""
+    s = re.sub(r"\(.*?\)", "", name)          # 去掉 "( limited availability )" 等括号
+    s = s.strip().lower()
+    s = re.sub(r"[^a-z0-9.]+", "-", s)
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s
+
+
+def _mtok_price(text):
+    """从 '$10 / MTok' / '$1.00' 解析出 float（美元/百万 tokens）；无法解析返回 None。"""
+    if not text:
+        return None
+    m = re.search(r"\$?\s*([0-9]+(?:\.[0-9]+)?)\s*/\s*MTok", text)
+    if not m:
+        m = re.search(r"\$?\s*([0-9]+(?:\.[0-9]+)?)", text)
+    return float(m.group(1)) if m else None
+
+
+def scrape_anthropic():
+    """抓 Anthropic 官方定价页（$/MTok）。主定价表含 Base Input Tokens / Output Tokens；
+    input=基价, output=输出价, cache_in=缓存命中价。型号 slug 成 OpenRouter ID。
+    页面结构变化导致解析失败时抛异常，由 fetch_all 捕获降级（不回退官方价）。"""
+    html = _http_get(ANTHROPIC_PRICE_PAGE, timeout=20).text
+    soup = BeautifulSoup(html, "html.parser")
+    table = None
+    for t in soup.find_all("table"):
+        tr = t.find("tr")
+        if not tr:
+            continue
+        head = [c.get_text(" ", strip=True).lower() for c in tr.find_all(["th", "td"])]
+        if "base input tokens" in head and "output tokens" in head:
+            table = t
+            break
+    if table is None:
+        raise ValueError("anthropic pricing table not found")
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    out = []
+    for tr in table.find_all("tr")[1:]:
+        cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+        if len(cells) < 6:
+            continue
+        name = cells[0]
+        inp = _mtok_price(cells[1])     # Base Input Tokens
+        cache_hit = _mtok_price(cells[4])  # Cache Hits & Refreshes
+        outp = _mtok_price(cells[5])    # Output Tokens
+        if inp is None or outp is None:
+            continue
+        slug = _anthropic_slug(name)
+        if not slug:
+            continue
+        out.append({
+            "id": "anthropic/" + slug,
+            "name": "{} (Anthropic)".format(name.strip()),
+            "provider": "Anthropic",
+            "input": inp,
+            "output": outp,
+            "cache_in": cache_hit,
+            "updated": now,
+        })
+    return out
+
+
 def fetch_all():
     results = []
     errors = []
-    ds_rows = []
-    for fn in (fetch_openrouter, scrape_deepseek):
+    official = []  # [(rows, add_if_missing), ...]
+    srcs = (
+        (fetch_openrouter, False),
+        (scrape_deepseek, True),     # DeepSeek 官方：缺失模型则新增
+        (scrape_anthropic, False),   # Anthropic 官方：仅覆盖已有 OpenRouter 条目，避免幻影行
+    )
+    for fn, add_missing in srcs:
         try:
             got = fn()
             if got:
-                if fn is scrape_deepseek:
-                    ds_rows = got
-                results.extend(got)
+                if fn is fetch_openrouter:
+                    results.extend(got)
+                else:
+                    official.append((got, add_missing))
         except Exception as exc:
             errors.append("{}: {}".format(fn.__name__, str(exc)[:120]))
-    if ds_rows:
+    if official:
         by_id = {r.get("id"): r for r in results}
-        for d in ds_rows:
-            old = by_id.get(d["id"])
-            if old:
-                merged = dict(old)
-                for k in ("input", "output", "cache_in", "context"):
-                    merged[k] = d.get(k, old.get(k))
-                merged["updated"] = d["updated"]
-                merged["official_price"] = True
-                by_id[d["id"]] = merged
-            else:
-                d["official_price"] = True
-                by_id[d["id"]] = d
+        for rows, add_missing in official:
+            for d in rows:
+                if not d.get("id"):
+                    continue
+                old = by_id.get(d["id"])
+                if old:
+                    merged = dict(old)
+                    for k in ("input", "output", "cache_in", "context"):
+                        if d.get(k) is not None:
+                            merged[k] = d[k]
+                    merged["updated"] = d.get("updated", old.get("updated"))
+                    merged["official_price"] = True
+                    by_id[d["id"]] = merged
+                elif add_missing:
+                    d["official_price"] = True
+                    by_id[d["id"]] = d
         results = list(by_id.values())
     if not results:
         results = [dict(FALLBACK[i]) for i in range(len(FALLBACK))]
