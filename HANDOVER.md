@@ -37,7 +37,7 @@
 token_rank/
 ├── .github/workflows/    # GitHub Actions 定时任务 (update-data.yml)
 ├── site/                 # 构建产物（= gh-pages 分支根）
-├── static/               # 前端静态资源 (app.js, style.css, chart.umd.min.js, favicon.svg)
+├── static/               # 前端静态资源 (app.js, utils.js, style.css, chart.umd.min.js, favicon.svg)
 ├── templates/            # 页面模板 (index.html 等)
 ├── tests/                # Python 单元测试 (test_scraper.py)
 ├── build_static.py       # 静态站点构建脚本
@@ -170,6 +170,17 @@ token_rank/
 | v39 | 移动端适配 + 三项 UX 优化 |
 | v40 | 添加 Python 单元测试（6/6 通过） |
 
+### 本轮（本会话）改动（提交号：94d5218 → 3f749fb；项目版本仍为 v40）
+| 类型 | 内容 |
+|------|------|
+| 运维 | 短期三项核查通过：GitHub Pages 部署正常、定时任务（cron `0 22,4,10,16`）全部成功、数据完整性无伪造/无缺失 |
+| 数据 | AA 性能缓存 TTL 由 30 天改 **24 小时**，修复 `aa_perf_at` 长期滞留 08-10 的问题；同步/合并 gh-pages 数据到本地 |
+| 抓取 | 新增 **Anthropic 官方定价页**解析（官方价覆盖 OpenRouter，仅覆盖已有 id 避免幻影行，保留 DeepSeek 行为）；重构 `fetch_all` 为通用官方源覆盖 |
+| 前端 | 修复主表格纵向滚动；模型列 sticky；表头排序高亮+点击排序；工具栏窄屏折叠；新手教学改非阻塞式侧边抽屉 |
+| 前端 | 视觉打磨（渐变标题+眉标、卡片标题强调条、控件聚焦/悬浮反馈、更宽布局）；缓存版本 `?v=36` |
+| 前端 | 模块化：拆分纯工具层 `static/utils.js`（app.js 保留页面编排） |
+| 文档 | 修正 §6 schema 为真实结构；更新目录/结构；补 v34–v40 记录 |
+
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
 - ✅ 静态网站生成 (`build_static.py`)
@@ -187,6 +198,8 @@ token_rank/
 | 使用 GitHub Pages 作为主要部署平台 | 免费、稳定、与 GitHub Actions 无缝集成 |
 | 采用双模式前端架构 | 兼顾免费部署 (GitHub Pages) 和动态数据 (PythonAnywhere) |
 | DeepSeek 官方价格覆盖 OpenRouter | 官方价格更准确，避免第三方加价 |
+| AA 性能缓存 24 小时 TTL（本轮） | 30 天→24 小时，避免性能数据长期滞留；超期才重新抓取 |
+| Anthropic 官方价覆盖 OpenRouter（本轮） | 官方价更准；仅覆盖已有 id 避免幻影行；Google（分档/模态价）与 OpenAI（JS 渲染）暂不抓取 |
 | 定时任务每 6 小时执行一次 | 平衡数据时效性和 API 调用限制 |
 | SSL 使用 openssl 后端 | 解决 Windows 环境下的 SSL 兼容性问题 |
 | 本地测试使用 8081 端口 | 8080 端口已被占用 |
@@ -201,6 +214,7 @@ token_rank/
 | 实时爬取所有数据源 | API 调用限制和成本问题 |
 | 单一前端模式 | 无法同时满足免费部署和动态数据需求 |
 | 使用 worktree 恢复历史数据 | 机制复杂且容易损坏，改用 git show |
+| 前端 ES-module 全量拆分 | app.js 大量函数经共享 state/全局 helper 强耦合且站点已部署，回归风险高；此前一次拆分曾损坏该文件；已改为低风险的工具层拆分（utils.js） |
 
 ---
 
@@ -215,21 +229,23 @@ token_rank/
 - [x] GitHub Pages 部署配置完成
 - [x] GitHub Actions 定时任务配置完成
 - [x] v34-v40 修复和优化完成
-- [x] Python 单元测试完成（6/6 通过）
+- [x] 短期三项核查通过（部署/定时任务/数据完整性）
+- [x] 本轮改动：AA TTL 修复、Anthropic 官方源、前端多轮打磨、utils.js 模块化
+- [x] Python 单元测试完成（11/11 通过）
 
 ---
 
 ## 11. 尚未完成的任务 (Pending Tasks)
 
-### 短期
-- [ ] 监控 GitHub Pages 部署状态
-- [ ] 验证定时任务执行日志
-- [ ] 检查数据完整性
+### 短期（本轮已完成，后续按需抽查）
+- [x] 监控 GitHub Pages 部署状态
+- [x] 验证定时任务执行日志
+- [x] 检查数据完整性
 
 ### 中期
-- [ ] 优化数据抓取脚本 (添加更多数据源)
-- [ ] 改进前端 UI/UX 设计
-- [ ] 添加数据导出功能 (CSV/Excel)
+- [x] 优化数据抓取脚本（新增 Anthropic 官方定价源）
+- [x] 改进前端 UI/UX 设计（多轮迭代）
+- [ ] 添加数据导出功能（CSV 已支持，待加 Excel .xlsx）
 
 ### 长期
 - [ ] 考虑替代 PythonAnywhere 的方案 (如 Vercel/Netlify)
