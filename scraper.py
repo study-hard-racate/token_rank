@@ -130,15 +130,6 @@ def fetch_throughput_rank():
     return {mid: (i, len(ids)) for i, mid in enumerate(ids)}
 
 
-def _parse_usd(text):
-    m = re.search(r"([\$￥¥])\s?(\d+(?:\.\d+)?)\s?(?:per|/|\s)(?:1M|million|M)\s+tokens", text, re.I)
-    if not m:
-        m = re.search(r"(\d+(?:\.\d+)?)\s?(?:per|/)\s?(?:1M|million|M)\s+tokens", text, re.I)
-    if m:
-        return float(m.group(1).strip("$￥¥"))
-    return None
-
-
 def _row_prices(row):
     """取行内 $ 开头数值（价格列），返回 [flash, pro] 顺序的数值列表。"""
     vals = []

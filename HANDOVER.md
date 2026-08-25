@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-08-21
 > 交接对象: 新会话
-> 项目版本: v40
+> 项目版本: v41
 
 ---
 
@@ -20,12 +20,12 @@
 
 ## 2. 关键背景 (Key Background)
 
-- **项目目录:** `D:\deepseek harnes\token_rank`（以此为准）
+- **项目目录:** `D:\DeepSeek\deepseek harnes\token_rank`（以此为准）
 - **GitHub 仓库:** https://github.com/study-hard-racate/token_rank
 - **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
 - **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
 - **本地测试端口:** 8081 (8080 被占用)
-- **当前版本:** v40
+- **当前版本:** v41
 - **数据原则:** 永不伪造数据 (Data honesty principle)
 
 ---
@@ -75,7 +75,7 @@ token_rank/
 ## 4. 长期偏好 (Long-term Preferences)
 
 1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
-2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v40)
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v41)
 3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
 4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
 5. **历史数据保留:** 所有历史数据必须持久化保存
@@ -159,7 +159,7 @@ token_rank/
 
 ## 7. 已完成的工作 (Completed Work)
 
-### v34-v40 完成内容
+### v34-v41 完成内容
 | 版本 | 内容 |
 |------|------|
 | v34 | 清理 PythonAnywhere 引用，完善 `.gitignore` |
@@ -169,8 +169,9 @@ token_rank/
 | v38 | 修复 3 处 providerChips 空引用 Bug |
 | v39 | 移动端适配 + 三项 UX 优化 |
 | v40 | 添加 Python 单元测试（6/6 通过） |
+| v41 | Phase 1 低风险卫生项（清理残留/开发依赖/CI 测试门禁/文档统一/死代码清理） |
 
-### 本轮（本会话）改动（提交号：94d5218 → 3f749fb；项目版本仍为 v40）
+### 上轮改动（提交号：94d5218 → 3f749fb；项目版本 v40）
 | 类型 | 内容 |
 |------|------|
 | 运维 | 短期三项核查通过：GitHub Pages 部署正常、定时任务（cron `0 22,4,10,16`）全部成功、数据完整性无伪造/无缺失 |
@@ -180,6 +181,17 @@ token_rank/
 | 前端 | 视觉打磨（渐变标题+眉标、卡片标题强调条、控件聚焦/悬浮反馈、更宽布局）；缓存版本 `?v=36` |
 | 前端 | 模块化：拆分纯工具层 `static/utils.js`（app.js 保留页面编排） |
 | 文档 | 修正 §6 schema 为真实结构；更新目录/结构；补 v34–v40 记录 |
+
+### 本轮（本会话）改动（v41：Phase 1 低风险卫生项，2026-08-25）
+| 类型 | 内容 |
+|------|------|
+| 清理 | 删除根目录 9 个空 `pytest-cache-files-*` 残留目录；`.gitignore` 增加 `pytest-cache-files-*/`、`.pytest_cache/` |
+| 工具链 | 新增 `requirements-dev.txt`（pytest），开发依赖与生产依赖分离 |
+| CI | `update-data.yml` 构建前增加 pytest 测试步骤，**测试失败即中止，不发布** |
+| 测试 | 修复 `TestCollect` 测试污染：未 patch 的 `fetch_aa_perf` 会让测试真实抓取 AA 页面（约 3MB）并**写入 aa_perf.json**；已补 patch，测试完全离线（0.14s 完成、不落盘），为 CI 门禁扫清障碍 |
+| 文档 | README 端口统一为 8081；HANDOVER 修正实际项目路径（`D:\DeepSeek\deepseek harnes\token_rank`） |
+| 代码 | `app.py` 默认端口改为 8081（与硬规则一致，仅本地开发用）；删除死代码 `_parse_usd` |
+| 版本 | v40 → v41 |
 
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
@@ -220,7 +232,7 @@ token_rank/
 
 ## 10. 当前进度 (Current Progress)
 
-**版本:** v40
+**版本:** v41
 **状态:** ✅ 稳定运行
 
 - [x] 核心数据抓取功能完成
@@ -230,8 +242,9 @@ token_rank/
 - [x] GitHub Actions 定时任务配置完成
 - [x] v34-v40 修复和优化完成
 - [x] 短期三项核查通过（部署/定时任务/数据完整性）
-- [x] 本轮改动：AA TTL 修复、Anthropic 官方源、前端多轮打磨、utils.js 模块化
+- [x] 上轮改动：AA TTL 修复、Anthropic 官方源、前端多轮打磨、utils.js 模块化
 - [x] Python 单元测试完成（11/11 通过）
+- [x] v41：Phase 1 低风险卫生项完成（清理残留/requirements-dev/CI 测试门禁/文档统一/死代码清理）
 
 ---
 
@@ -257,7 +270,7 @@ token_rank/
 ## 12. 不能随意修改的内容 (Protected Items)
 
 1. **历史数据文件:** 根目录下 `data.json` / `history.json` / `aa_perf.json`（不可删除或覆盖）
-2. **版本号:** 当前版本为 v40，修改需有明确理由
+2. **版本号:** 当前版本为 v41，修改需有明确理由
 3. **Git 全局配置:** `sslBackend = openssl`
 4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
 5. **数据原则:** 永不伪造数据
@@ -270,7 +283,7 @@ token_rank/
 
 ### 第一步: 验证环境
 ```bash
-cd D:\deepseek harnes\token_rank
+cd "D:\DeepSeek\deepseek harnes\token_rank"
 git status
 git log --oneline -10
 python --version

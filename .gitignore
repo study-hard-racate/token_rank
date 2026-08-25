@@ -11,6 +11,10 @@ venv/
 dist/
 build/
 
+# Pytest
+.pytest_cache/
+pytest-cache-files-*/
+
 # Site build output
 site/
 

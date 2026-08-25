@@ -1,5 +1,7 @@
 # LLM Token 定价排行榜
 
+> 当前版本：v41（版本历史见 HANDOVER.md）
+
 用 Python 实时爬取各大模型 API 的 Token 费用，前端渲染出一个可筛选、可排序的排行榜网页。
 
 ## 功能
@@ -23,10 +25,10 @@ python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt      # Windows
 # 或 source .venv/bin/pip install -r requirements.txt  # Linux/macOS
 
-.venv\Scripts\python app.py                        # 启动
+.venv\Scripts\python app.py                        # 启动（本地开发调试用，默认端口 8081）
 ```
 
-打开 http://127.0.0.1:8080 即可。
+打开 http://127.0.0.1:8081 即可。
 
 ## 免费部署到公网
 

@@ -65,6 +65,7 @@ class TestCollect:
              patch.object(scraper, "load_cache", return_value=None), \
              patch.object(scraper, "save_cache"), \
              patch.object(scraper, "load_aa_perf", return_value=None), \
+             patch.object(scraper, "fetch_aa_perf", return_value=None), \
              patch.object(scraper, "fetch_throughput_rank", return_value={}):
             result = scraper.collect()
         assert len(result["items"]) == 1

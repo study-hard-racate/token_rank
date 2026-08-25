@@ -6,7 +6,7 @@
   - 本地运行 `python app.py` 测试完整 API 功能
   - 调试数据抓取和评分逻辑
 
-部署方式：python app.py → http://127.0.0.1:8080
+部署方式：python app.py → http://127.0.0.1:8081（默认端口 8081，可用环境变量 PORT 覆盖）
 """
 
 import json
@@ -259,5 +259,5 @@ def add_cache_headers(resp):
 
 if __name__ == "__main__":
     refresher.start()
-    port = int(os.environ.get("PORT", "8080"))
+    port = int(os.environ.get("PORT", "8081"))
     app.run(host="0.0.0.0", port=port)
