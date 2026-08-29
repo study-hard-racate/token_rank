@@ -42,6 +42,9 @@ jobs:
       - name: 运行单元测试（失败即中止，不发布）
         run: python -m pytest tests -q
 
+      - name: 前端冒烟测试（分享链接按钮等，失败即中止）
+        run: node tests/share_link_smoke.mjs
+
       - name: 爬取并构建 site/
         run: python build_static.py
 

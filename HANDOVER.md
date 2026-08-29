@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-08-21
 > 交接对象: 新会话
-> 项目版本: v41
+> 项目版本: v42
 
 ---
 
@@ -25,7 +25,7 @@
 - **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
 - **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
 - **本地测试端口:** 8081 (8080 被占用)
-- **当前版本:** v41
+- **当前版本:** v42
 - **数据原则:** 永不伪造数据 (Data honesty principle)
 
 ---
@@ -75,7 +75,7 @@ token_rank/
 ## 4. 长期偏好 (Long-term Preferences)
 
 1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
-2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v41)
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v42)
 3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
 4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
 5. **历史数据保留:** 所有历史数据必须持久化保存
@@ -159,7 +159,7 @@ token_rank/
 
 ## 7. 已完成的工作 (Completed Work)
 
-### v34-v41 完成内容
+### v34-v42 完成内容
 | 版本 | 内容 |
 |------|------|
 | v34 | 清理 PythonAnywhere 引用，完善 `.gitignore` |
@@ -170,6 +170,7 @@ token_rank/
 | v39 | 移动端适配 + 三项 UX 优化 |
 | v40 | 添加 Python 单元测试（6/6 通过） |
 | v41 | Phase 1 低风险卫生项（清理残留/开发依赖/CI 测试门禁/文档统一/死代码清理） |
+| v42 | 修复「分享链接」按钮失效（事件绑定缺失）；新增前端冒烟测试并接入 CI |
 
 ### 上轮改动（提交号：94d5218 → 3f749fb；项目版本 v40）
 | 类型 | 内容 |
@@ -182,7 +183,7 @@ token_rank/
 | 前端 | 模块化：拆分纯工具层 `static/utils.js`（app.js 保留页面编排） |
 | 文档 | 修正 §6 schema 为真实结构；更新目录/结构；补 v34–v40 记录 |
 
-### 本轮（本会话）改动（v41：Phase 1 低风险卫生项，2026-08-25）
+### 上轮改动（v41：Phase 1 低风险卫生项，2026-08-25）
 | 类型 | 内容 |
 |------|------|
 | 清理 | 删除根目录 9 个空 `pytest-cache-files-*` 残留目录；`.gitignore` 增加 `pytest-cache-files-*/`、`.pytest_cache/` |
@@ -192,6 +193,14 @@ token_rank/
 | 文档 | README 端口统一为 8081；HANDOVER 修正实际项目路径（`D:\DeepSeek\deepseek harnes\token_rank`） |
 | 代码 | `app.py` 默认端口改为 8081（与硬规则一致，仅本地开发用）；删除死代码 `_parse_usd` |
 | 版本 | v40 → v41 |
+
+### 本轮（本会话）改动（v42：分享链接按钮修复，2026-08-25）
+| 类型 | 内容 |
+|------|------|
+| Bug | **「分享链接」按钮完全失效**：`#share-link` 在 app.js 中无任何事件绑定（v36 加入 URL 分享后，后续前端重构丢失了点击处理器）；已补：先 `saveStateToURL()` 同步当前筛选到 URL，再复制 `location.href` 到剪贴板，按钮显示「✓ 已复制」反馈 |
+| 兼容 | 复制支持两种路径：安全上下文（https，GitHub Pages）用 `navigator.clipboard`；非安全上下文（本地 http://127.0.0.1）降级 `execCommand` |
+| 测试 | 新增 `tests/share_link_smoke.mjs` 无头 Node 冒烟测试：加载真实 app.js，模拟点击，断言剪贴板收到含筛选参数的 URL（安全/降级双路径），并接入 CI（`node tests/share_link_smoke.mjs`） |
+| 版本 | v41 → v42 |
 
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
@@ -232,7 +241,7 @@ token_rank/
 
 ## 10. 当前进度 (Current Progress)
 
-**版本:** v41
+**版本:** v42
 **状态:** ✅ 稳定运行
 
 - [x] 核心数据抓取功能完成
@@ -245,6 +254,7 @@ token_rank/
 - [x] 上轮改动：AA TTL 修复、Anthropic 官方源、前端多轮打磨、utils.js 模块化
 - [x] Python 单元测试完成（11/11 通过）
 - [x] v41：Phase 1 低风险卫生项完成（清理残留/requirements-dev/CI 测试门禁/文档统一/死代码清理）
+- [x] v42：分享链接按钮修复 + 前端冒烟测试接入 CI
 
 ---
 
@@ -270,7 +280,7 @@ token_rank/
 ## 12. 不能随意修改的内容 (Protected Items)
 
 1. **历史数据文件:** 根目录下 `data.json` / `history.json` / `aa_perf.json`（不可删除或覆盖）
-2. **版本号:** 当前版本为 v41，修改需有明确理由
+2. **版本号:** 当前版本为 v42，修改需有明确理由
 3. **Git 全局配置:** `sslBackend = openssl`
 4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
 5. **数据原则:** 永不伪造数据

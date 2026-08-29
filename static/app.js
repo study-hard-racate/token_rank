@@ -1398,6 +1398,29 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "cmp-close") { $("cmp-modal").classList.add("hidden"); return; }
   if (e.target.closest("#rate-auto")) { autoRate(); return; }
   if (e.target.closest("#export")) { exportCSV(); return; }
+  const shareBtn = e.target.closest("#share-link");
+  if (shareBtn) {
+    saveStateToURL();
+    const url = location.href;
+    const old = shareBtn.textContent;
+    const done = () => {
+      shareBtn.textContent = "✓ 已复制";
+      setTimeout(() => (shareBtn.textContent = old), 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(done, done);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (err) {}
+      document.body.removeChild(ta);
+      done();
+    }
+    return;
+  }
   const rb = e.target.closest(".range-btn2");
   if (rb) {
     setMoversRange(parseInt(rb.dataset.days));
