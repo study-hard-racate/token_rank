@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-08-21
 > 交接对象: 新会话
-> 项目版本: v43
+> 项目版本: v44
 
 ---
 
@@ -25,7 +25,7 @@
 - **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
 - **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
 - **本地测试端口:** 8081 (8080 被占用)
-- **当前版本:** v43
+- **当前版本:** v44
 - **数据原则:** 永不伪造数据 (Data honesty principle)
 
 ---
@@ -39,7 +39,7 @@ token_rank/
 ├── site/                 # 构建产物（= gh-pages 分支根）
 ├── static/               # 前端静态资源 (app.js, utils.js, style.css, chart.umd.min.js, favicon.svg)
 ├── templates/            # 页面模板 (index.html 等)
-├── tests/                # 测试 (test_scraper.py, test_scoring.py, share_link_smoke.mjs, calccomp_bridge.mjs)
+├── tests/                # 测试（80 项：test_scraper / test_scoring / test_scraper_parsers / test_scraper_history / test_aa_match / test_build_static / test_app_api / test_scraper_refresher + share_link_smoke.mjs / calccomp_bridge.mjs）
 ├── build_static.py       # 静态站点构建脚本（评分逻辑来自 scoring.py）
 ├── app.py                # Flask API 应用（本地开发调试用；评分逻辑来自 scoring.py）
 ├── scraper.py            # 数据抓取脚本
@@ -77,7 +77,7 @@ token_rank/
 ## 4. 长期偏好 (Long-term Preferences)
 
 1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
-2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v43)
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v44)
 3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
 4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
 5. **历史数据保留:** 所有历史数据必须持久化保存
@@ -161,7 +161,7 @@ token_rank/
 
 ## 7. 已完成的工作 (Completed Work)
 
-### v34-v43 完成内容
+### v34-v44 完成内容
 | 版本 | 内容 |
 |------|------|
 | v34 | 清理 PythonAnywhere 引用，完善 `.gitignore` |
@@ -174,6 +174,7 @@ token_rank/
 | v41 | Phase 1 低风险卫生项（清理残留/开发依赖/CI 测试门禁/文档统一/死代码清理） |
 | v42 | 修复「分享链接」按钮失效（事件绑定缺失）；新增前端冒烟测试并接入 CI |
 | v43 | Phase 2 评分逻辑去重（scoring.py 唯一实现，Python/JS 对拍锁等价） |
+| v44 | Phase 3 测试覆盖补齐（fixture 解析/历史回补/AA 合并/构建/API 契约/Refresher，80 项） |
 
 ### 上轮改动（提交号：94d5218 → 3f749fb；项目版本 v40）
 | 类型 | 内容 |
@@ -206,7 +207,7 @@ token_rank/
 | 测试 | 新增 `tests/share_link_smoke.mjs` 无头 Node 冒烟测试：加载真实 app.js，模拟点击，断言剪贴板收到含筛选参数的 URL（安全/降级双路径），并接入 CI（`node tests/share_link_smoke.mjs`） |
 | 版本 | v41 → v42 |
 
-### 本轮（本会话）改动（v43：Phase 2 评分逻辑去重，2026-08-29）
+### 上轮改动（v43：Phase 2 评分逻辑去重，2026-08-29）
 | 类型 | 内容 |
 |------|------|
 | 重构 | 新增 **`scoring.py`** 作为评分逻辑唯一实现（`SCENES`/`SCENE_ORDER`/`WEIGHTS`/`scene_index`/`add_scores`/`composite`）；`build_static.py` 与 `app.py` 删除各自重复的 `_add_scores`/`_composite`/`scene_index` 等，统一调用 scoring |
@@ -215,6 +216,19 @@ token_rank/
 | 测试 | 新增 `tests/test_scoring.py`（29 项：scene_index/add_scores/composite 单测 + 对拍测试），新增 `tests/calccomp_bridge.mjs`（从真实 app.js 提取 calcComp 供 pytest 对拍）；全套 29/29 通过 |
 | 验证 | 重构后构建与 v42 产物对比：共同 id 的 ps/pf **零差异**（sp 差异为数据漂移，非逻辑）；真实数据 3330 组 Python/JS 对拍**零分歧**；app.py API 端到端形状不变；8081 静态服务正常 |
 | 版本 | v42 → v43 |
+
+### 本轮（本会话）改动（v44：Phase 3 测试覆盖补齐，2026-08-29）
+| 类型 | 内容 |
+|------|------|
+| 测试 | 新增 6 个测试文件、51 项用例，全套 **80/80 通过**（1.2s，无网络、不落盘） |
+| 解析 | `test_scraper_parsers.py`：DeepSeek/Anthropic 官方页 **fixture HTML** 解析（含缺表/缺行异常路径）、OpenRouter JSON（价格换算/厂商映射/0 缓存价/无 `/` 厂商）、吞吐排名、AA 内嵌 JSON 解析（秒→毫秒）、`fetch_all` 全源失败 → FALLBACK 降级 + 部分失败保数据 |
+| 历史 | `test_scraper_history.py`：record_history 同日替换 + 45 天裁剪、get_history 过滤、**Wayback backfill**（CDX + 快照 HTML 全链路，tmp_path 隔离）、maybe_backfill 标记/门限、_row_model_id/_monies、cache/history 文件往返 |
+| AA | `test_aa_match.py`：_aa_bare/_aa_de_suffix/_aa_or_attempts 边界（连续剥后缀、日期后缀、冒号变体）、merge_aa_perf（仅补缺失 + aa_perf 标记 + 空值不补） |
+| 构建 | `test_build_static.py`：write_data 结构、copy_frontend 相对路径化 + about 段落替换、**main 离线全流程**（SITE 重定向 tmp，不触碰受保护数据） |
+| API | `test_app_api.py`：Flask test_client 锁定 Phase 2 响应契约（ps/pf 标量/pf_src/sp/comp）、实惠榜排序、筛选/排序/未知权重回退 |
+| 线程 | `test_scraper_refresher.py`：Refresher 陈旧触发/新鲜跳过/并发去重/阻塞刷新 |
+| 说明 | 新增用例均为行为锁定（fixture 与解析逻辑严格对应）；期间修正 5 处测试自身预期错误（输出顺序、Unknown 语义、连续剥后缀、_last_backfill 读取、bound method 名称） |
+| 版本 | v43 → v44 |
 
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
@@ -255,7 +269,7 @@ token_rank/
 
 ## 10. 当前进度 (Current Progress)
 
-**版本:** v43
+**版本:** v44
 **状态:** ✅ 稳定运行
 
 - [x] 核心数据抓取功能完成
@@ -270,6 +284,7 @@ token_rank/
 - [x] v41：Phase 1 低风险卫生项完成（清理残留/requirements-dev/CI 测试门禁/文档统一/死代码清理）
 - [x] v42：分享链接按钮修复 + 前端冒烟测试接入 CI
 - [x] v43：Phase 2 评分逻辑去重完成（scoring.py 唯一实现；Python/JS 对拍 3330 组零分歧；29/29 测试通过）
+- [x] v44：Phase 3 测试覆盖补齐完成（fixture 解析/历史回补/AA 合并/构建/API 契约/Refresher；80/80 测试通过）
 
 ---
 
@@ -295,7 +310,7 @@ token_rank/
 ## 12. 不能随意修改的内容 (Protected Items)
 
 1. **历史数据文件:** 根目录下 `data.json` / `history.json` / `aa_perf.json`（不可删除或覆盖）
-2. **版本号:** 当前版本为 v43，修改需有明确理由
+2. **版本号:** 当前版本为 v44，修改需有明确理由
 3. **Git 全局配置:** `sslBackend = openssl`
 4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
 5. **数据原则:** 永不伪造数据

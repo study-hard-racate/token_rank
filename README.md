@@ -1,6 +1,6 @@
 # LLM Token 定价排行榜
 
-> 当前版本：v43（版本历史见 HANDOVER.md）
+> 当前版本：v44（版本历史见 HANDOVER.md）
 
 用 Python 实时爬取各大模型 API 的 Token 费用，前端渲染出一个可筛选、可排序的排行榜网页。
 
