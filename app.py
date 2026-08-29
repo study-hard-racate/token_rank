@@ -12,62 +12,16 @@
 import json
 import os
 import time
-from bisect import bisect_left
 from datetime import date
 
 from flask import Flask, jsonify, render_template, request
 
 import scraper
+import scoring
 
 app = Flask(__name__)
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
 refresher = scraper.Refresher()
-
-WEIGHT_PRESETS = {
-    "balanced": (0.4, 0.4, 0.2),
-    "value": (0.5, 0.35, 0.15),
-    "perf": (0.25, 0.5, 0.25),
-}
-
-
-def _scene_index(it, scene):
-    order = {
-        "code": ("code", "intel", "agentic"),
-        "agent": ("agentic", "intel", "code"),
-    }.get(scene, ("intel", "code", "agentic"))
-    for k in order:
-        v = it.get(k)
-        if v is not None:
-            return v, k
-    return None, None
-
-
-def _add_scores(items, scene="general"):
-    prices = sorted((it.get("input") or 0) for it in items)
-    n = len(prices) or 1
-    out = []
-    for it in items:
-        ps = 100 * (1 - bisect_left(prices, it.get("input") or 0) / n)
-        pf, pf_src = _scene_index(it, scene)
-        o = dict(it)
-        o["ps"] = round(ps, 1)
-        o["pf"] = round(float(pf), 1) if pf is not None else None
-        o["pf_src"] = pf_src
-        o["sp"] = it.get("speed_pct")
-        o["comp"] = None
-        out.append(o)
-    return out
-
-
-def _composite(o, preset):
-    w1, w2, w3 = WEIGHT_PRESETS.get(preset, WEIGHT_PRESETS["balanced"])
-    if o["pf"] is None:
-        return None
-    parts = [(o["ps"], w1), (o["pf"], w2)]
-    if o["sp"] is not None:
-        parts.append((o["sp"], w3))
-    total = sum(w for _, w in parts)
-    return round(sum(v * w for v, w in parts) / total, 1)
 
 
 def _read_cache():
@@ -158,12 +112,17 @@ def about():
 def api_data():
     refresher.ensure()
     cached = _read_cache()
-    items = _add_scores(list(cached.get("items", [])), request.args.get("scene", "general"))
+    scene = request.args.get("scene", "general")
+    # 复制后再原地评分，避免污染缓存；add_scores 输出 3 场景 dict，按请求场景展平为标量
+    items = scoring.add_scores([dict(it) for it in cached.get("items", [])])
     preset = request.args.get("weights", "balanced")
-    if preset not in WEIGHT_PRESETS:
+    if preset not in scoring.WEIGHTS:
         preset = "balanced"
     for o in items:
-        o["comp"] = _composite(o, preset)
+        pfv = (o.get("pf") or {}).get(scene) or {}
+        o["pf"] = pfv.get("v")
+        o["pf_src"] = pfv.get("src")
+        o["comp"] = scoring.composite(o.get("ps"), o["pf"], o.get("sp"), preset)
     items = _filter(items)
     if request.args.get("budget") == "1":
         items = [o for o in items if o["comp"] is None]

@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-08-21
 > 交接对象: 新会话
-> 项目版本: v42
+> 项目版本: v43
 
 ---
 
@@ -25,7 +25,7 @@
 - **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
 - **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
 - **本地测试端口:** 8081 (8080 被占用)
-- **当前版本:** v42
+- **当前版本:** v43
 - **数据原则:** 永不伪造数据 (Data honesty principle)
 
 ---
@@ -39,11 +39,13 @@ token_rank/
 ├── site/                 # 构建产物（= gh-pages 分支根）
 ├── static/               # 前端静态资源 (app.js, utils.js, style.css, chart.umd.min.js, favicon.svg)
 ├── templates/            # 页面模板 (index.html 等)
-├── tests/                # Python 单元测试 (test_scraper.py)
-├── build_static.py       # 静态站点构建脚本
-├── app.py                # Flask API 应用 (PythonAnywhere，已弃用)
+├── tests/                # 测试 (test_scraper.py, test_scoring.py, share_link_smoke.mjs, calccomp_bridge.mjs)
+├── build_static.py       # 静态站点构建脚本（评分逻辑来自 scoring.py）
+├── app.py                # Flask API 应用（本地开发调试用；评分逻辑来自 scoring.py）
 ├── scraper.py            # 数据抓取脚本
+├── scoring.py            # 评分逻辑唯一实现（v43 起，ps/pf/sp/comp；前端 calcComp 与其对拍等价）
 ├── requirements.txt      # Python 依赖
+├── requirements-dev.txt  # 开发/测试依赖（pytest）
 ├── .gitignore            # Git 忽略规则
 ├── README.md
 ├── HANDOVER.md           # 本交接文档
@@ -75,7 +77,7 @@ token_rank/
 ## 4. 长期偏好 (Long-term Preferences)
 
 1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
-2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v42)
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v43)
 3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
 4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
 5. **历史数据保留:** 所有历史数据必须持久化保存
@@ -159,7 +161,7 @@ token_rank/
 
 ## 7. 已完成的工作 (Completed Work)
 
-### v34-v42 完成内容
+### v34-v43 完成内容
 | 版本 | 内容 |
 |------|------|
 | v34 | 清理 PythonAnywhere 引用，完善 `.gitignore` |
@@ -171,6 +173,7 @@ token_rank/
 | v40 | 添加 Python 单元测试（6/6 通过） |
 | v41 | Phase 1 低风险卫生项（清理残留/开发依赖/CI 测试门禁/文档统一/死代码清理） |
 | v42 | 修复「分享链接」按钮失效（事件绑定缺失）；新增前端冒烟测试并接入 CI |
+| v43 | Phase 2 评分逻辑去重（scoring.py 唯一实现，Python/JS 对拍锁等价） |
 
 ### 上轮改动（提交号：94d5218 → 3f749fb；项目版本 v40）
 | 类型 | 内容 |
@@ -194,7 +197,7 @@ token_rank/
 | 代码 | `app.py` 默认端口改为 8081（与硬规则一致，仅本地开发用）；删除死代码 `_parse_usd` |
 | 版本 | v40 → v41 |
 
-### 本轮（本会话）改动（v42：分享链接按钮修复，2026-08-25）
+### 上轮改动（v42：分享链接按钮修复，2026-08-25）
 | 类型 | 内容 |
 |------|------|
 | Bug | **「分享链接」按钮完全失效**：`#share-link` 在 app.js 中无任何事件绑定（v36 加入 URL 分享后，后续前端重构丢失了点击处理器）；已补：先 `saveStateToURL()` 同步当前筛选到 URL，再复制 `location.href` 到剪贴板，按钮显示「✓ 已复制」反馈 |
@@ -202,6 +205,16 @@ token_rank/
 | 缓存 | `app.js` 缓存版本号 `?v=36` → `?v=37`（避免旧版缓存导致修复不生效） |
 | 测试 | 新增 `tests/share_link_smoke.mjs` 无头 Node 冒烟测试：加载真实 app.js，模拟点击，断言剪贴板收到含筛选参数的 URL（安全/降级双路径），并接入 CI（`node tests/share_link_smoke.mjs`） |
 | 版本 | v41 → v42 |
+
+### 本轮（本会话）改动（v43：Phase 2 评分逻辑去重，2026-08-29）
+| 类型 | 内容 |
+|------|------|
+| 重构 | 新增 **`scoring.py`** 作为评分逻辑唯一实现（`SCENES`/`SCENE_ORDER`/`WEIGHTS`/`scene_index`/`add_scores`/`composite`）；`build_static.py` 与 `app.py` 删除各自重复的 `_add_scores`/`_composite`/`scene_index` 等，统一调用 scoring |
+| 结构 | 统一 `pf` 数据形态：data.json 持久化为 3 场景 dict（原 build_static 结构不变，前端静态模式零改动）；API 模式由 `api_data` 按请求场景展平为标量（响应形状与 v42 完全一致） |
+| 修复 | **对拍测试抓到两处真实分歧并修复**：① Python `round()` 银行家舍入 vs JS `Math.round` 半进位，在 .x5 边界差 0.1 → composite 改半进位；② CPython 3.12+ 内置 `sum()` 对 float 做补偿求和，在 .x5 边界与 JS 朴素累加差 1 ulp（真实数据 3330 组对拍曾现 17 处分歧）→ composite 改朴素顺序累加，现与 JS **逐位一致** |
+| 测试 | 新增 `tests/test_scoring.py`（29 项：scene_index/add_scores/composite 单测 + 对拍测试），新增 `tests/calccomp_bridge.mjs`（从真实 app.js 提取 calcComp 供 pytest 对拍）；全套 29/29 通过 |
+| 验证 | 重构后构建与 v42 产物对比：共同 id 的 ps/pf **零差异**（sp 差异为数据漂移，非逻辑）；真实数据 3330 组 Python/JS 对拍**零分歧**；app.py API 端到端形状不变；8081 静态服务正常 |
+| 版本 | v42 → v43 |
 
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
@@ -242,7 +255,7 @@ token_rank/
 
 ## 10. 当前进度 (Current Progress)
 
-**版本:** v42
+**版本:** v43
 **状态:** ✅ 稳定运行
 
 - [x] 核心数据抓取功能完成
@@ -256,6 +269,7 @@ token_rank/
 - [x] Python 单元测试完成（11/11 通过）
 - [x] v41：Phase 1 低风险卫生项完成（清理残留/requirements-dev/CI 测试门禁/文档统一/死代码清理）
 - [x] v42：分享链接按钮修复 + 前端冒烟测试接入 CI
+- [x] v43：Phase 2 评分逻辑去重完成（scoring.py 唯一实现；Python/JS 对拍 3330 组零分歧；29/29 测试通过）
 
 ---
 
@@ -281,7 +295,7 @@ token_rank/
 ## 12. 不能随意修改的内容 (Protected Items)
 
 1. **历史数据文件:** 根目录下 `data.json` / `history.json` / `aa_perf.json`（不可删除或覆盖）
-2. **版本号:** 当前版本为 v42，修改需有明确理由
+2. **版本号:** 当前版本为 v43，修改需有明确理由
 3. **Git 全局配置:** `sslBackend = openssl`
 4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
 5. **数据原则:** 永不伪造数据

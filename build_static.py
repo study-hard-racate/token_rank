@@ -21,50 +21,14 @@ import os
 import shutil
 import sys
 
+import scoring
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.join(ROOT, "site")
-SCENES = ["general", "code", "agent"]
-SCENE_ORDER = {
-    "general": ("intel", "code", "agentic"),
-    "code": ("code", "intel", "agentic"),
-    "agent": ("agentic", "intel", "code"),
-}
-WEIGHTS = {
-    "balanced": (0.4, 0.4, 0.2),
-    "value": (0.5, 0.35, 0.15),
-    "perf": (0.25, 0.5, 0.25),
-}
 
 
 def info(msg):
     print(msg)
-
-
-def scene_index(it, scene):
-    for k in SCENE_ORDER.get(scene, SCENE_ORDER["general"]):
-        v = it.get(k)
-        if v is not None:
-            try:
-                return float(v), k
-            except (TypeError, ValueError):
-                continue
-    return None, None
-
-
-def add_scores(items):
-    """复刻 app._add_scores：ps 一次，pf 按 3 场景预计算。"""
-    prices = sorted((it.get("input") or 0) for it in items)
-    n = len(prices) or 1
-    from bisect import bisect_left
-    for it in items:
-        it["ps"] = round(100 * (1 - bisect_left(prices, it.get("input") or 0) / n), 1)
-        pf = {}
-        for sc in SCENES:
-            v, src = scene_index(it, sc)
-            pf[sc] = {"v": round(v, 1) if v is not None else None, "src": src}
-        it["pf"] = pf
-        it["sp"] = it.get("speed_pct")
-    return items
 
 
 def copy_frontend():
@@ -170,7 +134,7 @@ def main():
                     "all sources failed on this run: kept last successful data"]
                 items = payload["items"]
 
-    items = add_scores(items)
+    items = scoring.add_scores(items)
     os.makedirs(SITE, exist_ok=True)
     write_data(items, payload)
 
