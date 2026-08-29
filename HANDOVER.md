@@ -199,6 +199,7 @@ token_rank/
 |------|------|
 | Bug | **「分享链接」按钮完全失效**：`#share-link` 在 app.js 中无任何事件绑定（v36 加入 URL 分享后，后续前端重构丢失了点击处理器）；已补：先 `saveStateToURL()` 同步当前筛选到 URL，再复制 `location.href` 到剪贴板，按钮显示「✓ 已复制」反馈 |
 | 兼容 | 复制支持两种路径：安全上下文（https，GitHub Pages）用 `navigator.clipboard`；非安全上下文（本地 http://127.0.0.1）降级 `execCommand` |
+| 缓存 | `app.js` 缓存版本号 `?v=36` → `?v=37`（避免旧版缓存导致修复不生效） |
 | 测试 | 新增 `tests/share_link_smoke.mjs` 无头 Node 冒烟测试：加载真实 app.js，模拟点击，断言剪贴板收到含筛选参数的 URL（安全/降级双路径），并接入 CI（`node tests/share_link_smoke.mjs`） |
 | 版本 | v41 → v42 |
 
