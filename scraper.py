@@ -121,6 +121,11 @@ def fetch_openrouter():
 
 
 def fetch_throughput_rank():
+    # 2026-08-29 实证：OpenRouter 的 sort=throughput-high-to-low 参数真实生效——
+    # 396 个模型 id 集合与默认请求一致，但顺序完全重排（396 处全不同），
+    # 且头部为 mercury-2 / nova-micro 等高吞吐模型。该排名即 OpenRouter 实测
+    # 吞吐，前端如实标注「吞吐名次百分位」。若未来参数失效（顺序与默认一致），
+    # 需改用 AA tps 排名或如实标注降级，勿静默使用无效排名。
     headers, api_key = _or_headers()
     data = _http_get(
         "https://openrouter.ai/api/v1/models?sort=throughput-high-to-low",
@@ -131,7 +136,7 @@ def fetch_throughput_rank():
 
 
 def _row_prices(row):
-    """取行内 $ 开头数值（价格列），返回 [flash, pro] 顺序的数值列表。"""
+    """取行内 $ 开头数值（价格列），返回按列顺序的数值列表。"""
     vals = []
     for cell in row:
         for m in re.finditer(r"\$\s?(\d+(?:\.\d+)?)", cell):
@@ -139,12 +144,34 @@ def _row_prices(row):
     return vals
 
 
+DEEPSEEK_DEFAULT_CONTEXT = 1000000  # 页面无 CONTEXT LENGTH 行时的兜底（2026-08-29 实证页面值为 1M）
+
+
+def _parse_context(text):
+    """解析官方页 CONTEXT LENGTH 值：'1M'→1000000、'128K'→128000、'32000'→32000；无法解析返回 None。"""
+    if not text:
+        return None
+    m = re.search(r"(\d+(?:\.\d+)?)\s*([KkMm]?)", text)
+    if not m:
+        return None
+    v = float(m.group(1))
+    unit = m.group(2).upper()
+    if unit == "K":
+        return int(v * 1000)
+    if unit == "M":
+        return int(v * 1_000_000)
+    return int(v)
+
+
 def scrape_deepseek():
     """抓 DeepSeek 官方定价页（每 1M tokens，$/1M）。
 
-    新页面结构：表格两列（deepseek-v4-flash | deepseek-v4-pro），
-    价格行：缓存命中/未命中/输出 × OFF-PEAK/PEAK 两档。
-    本函数取 OFF-PEAK 档（低价档），输出三条官方条目（flash-0731 / pro-0813 / flash-latest）。
+    2026-08-29 实证页面结构：三列（deepseek-v4-flash | deepseek-v4-pro |
+    deepseek-v4-flash-vision-exp）；MODEL VERSION 行给版本名；
+    CONTEXT LENGTH 行给上下文（'1M'，解析失败兜底 1000000）；
+    价格行：缓存命中/未命中/输出 × OFF-PEAK/PEAK 两档（PEAK 行为独立行，
+    延续上一价格行的 pending 状态）。本函数取 OFF-PEAK 档（低价档），
+    输出 4 条官方条目（flash-0731 / flash-latest / pro-0813 / vision-exp）。
     页面结构变化导致解析失败时抛异常，由 fetch_all 捕获降级。
     """
     html = _http_get("https://api-docs.deepseek.com/quick_start/pricing", timeout=10).text
@@ -162,8 +189,13 @@ def scrape_deepseek():
         raise ValueError("MODEL row not found")
     ver_row = next((r for r in rows if r and "MODEL VERSION" in r[0].upper()), None)
     ids = {"deepseek-v4-flash": "deepseek/deepseek-v4-flash-0731",
-           "deepseek-v4-pro": "deepseek/deepseek-v4-pro-0813"}
+           "deepseek-v4-pro": "deepseek/deepseek-v4-pro-0813",
+           "deepseek-v4-flash-vision-exp": "deepseek/deepseek-v4-flash-vision-exp"}
     versions = [v.strip() for v in (ver_row[1:] if ver_row else []) if v.strip()]
+    # CONTEXT LENGTH：解析官方页值（'1M'），行缺失或解析失败时兜底 DEEPSEEK_DEFAULT_CONTEXT
+    ctx_row = next((r for r in rows if r and "CONTEXT LENGTH" in r[0].upper()), None)
+    context = _parse_context(" ".join(ctx_row[1:])) if ctx_row else None
+    context = context or DEEPSEEK_DEFAULT_CONTEXT
     prices = {}
     pending = None
     for r in rows:
@@ -190,14 +222,18 @@ def scrape_deepseek():
     for i, (model, mid) in enumerate(ids.items()):
         if i >= len(versions):
             continue
-        hit_off = prices.get(("hit", "off")) or [None, None]
-        miss_off = prices.get(("miss", "off")) or [None, None]
-        out_off = prices.get(("out", "off")) or [None, None]
-        if out_off[i] is None:
+        hit_off = prices.get(("hit", "off")) or []
+        miss_off = prices.get(("miss", "off")) or []
+        out_off = prices.get(("out", "off")) or []
+        # 价格列可能短于模型列（页面结构变化），越界即跳过该列，避免整源解析失败
+        if i >= len(out_off) or out_off[i] is None:
             continue
         row = {"id": mid, "name": "DeepSeek {} (DeepSeek)".format(versions[i]),
-               "provider": "DeepSeek", "input": miss_off[i], "output": out_off[i],
-               "cache_in": hit_off[i], "context": 1000000, "updated": now}
+               "provider": "DeepSeek",
+               "input": miss_off[i] if i < len(miss_off) else None,
+               "output": out_off[i],
+               "cache_in": hit_off[i] if i < len(hit_off) else None,
+               "context": context, "updated": now}
         out.append(row)
         if model == "deepseek-v4-flash":
             latest = dict(row)
@@ -712,6 +748,8 @@ def collect():
                 it["idx_fallback"] = True
     cached = load_aa_perf()
     perf_used_at = None
+    aa_perf_stale = False   # 本次抓取失败、回退旧缓存时置 True（前端如实展示）
+    aa_perf_error = None
     fresh = False
     if cached:
         try:
@@ -735,6 +773,8 @@ def collect():
         except Exception as exc:
             if cached:
                 perf_used_at = cached["fetched_at"]
+                aa_perf_stale = True
+                aa_perf_error = str(exc)[:100]
                 try:
                     merge_aa_perf(items, cached["models"])
                 except Exception:
@@ -768,6 +808,8 @@ def collect():
         "items": items,
         "errors": errors,
         "aa_perf_at": perf_used_at,
+        "aa_perf_stale": aa_perf_stale,
+        "aa_perf_error": aa_perf_error,
     }
 
 

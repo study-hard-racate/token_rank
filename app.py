@@ -133,6 +133,8 @@ def api_data():
         "updated": cached.get("updated"),
         "errors": cached.get("errors", []),
         "aa_perf_at": cached.get("aa_perf_at"),
+        "aa_perf_stale": cached.get("aa_perf_stale", False),
+        "aa_perf_error": cached.get("aa_perf_error"),
         "count": len(items),
         "items": items,
         "providers": sorted({it.get("provider") for it in cached.get("items", [])}),

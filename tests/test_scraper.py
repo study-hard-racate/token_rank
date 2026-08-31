@@ -69,6 +69,70 @@ class TestCollect:
              patch.object(scraper, "fetch_throughput_rank", return_value={}):
             result = scraper.collect()
         assert len(result["items"]) == 1
+        # 无缓存且抓取失败 → 标记为不陈旧，错误进 errors
+        assert result["aa_perf_stale"] is False
+        assert any("aa_perf" in e for e in result["errors"])
+
+
+class TestCollectAAPerfStale:
+    """aa_perf 陈旧标记：抓取失败回退缓存 → stale=True；新抓取/新鲜缓存 → stale=False。"""
+
+    def test_stale_flag_when_fetch_fails_and_cache_used(self):
+        mock_items = [{"id": "openai/gpt-5", "input": 1.0, "output": 2.0, "context": 1000, "tps": None, "ttft": None}]
+        stale = {"fetched_at": "2026-08-01T00:00:00+00:00",
+                 "models": {"gpt5": {"tps": 106.99, "ttft": 65270.0}}}
+        with patch.object(scraper, "fetch_all", return_value=(mock_items, [])), \
+             patch.object(scraper, "record_history"), \
+             patch.object(scraper, "maybe_backfill"), \
+             patch.object(scraper, "load_cache", return_value=None), \
+             patch.object(scraper, "save_cache"), \
+             patch.object(scraper, "load_aa_perf", return_value=stale), \
+             patch.object(scraper, "fetch_aa_perf", side_effect=RuntimeError("aa down")), \
+             patch.object(scraper, "fetch_throughput_rank", return_value={}):
+            result = scraper.collect()
+        assert result["aa_perf_stale"] is True
+        assert "aa down" in result["aa_perf_error"]
+        assert result["aa_perf_at"] == stale["fetched_at"]
+        # 缓存数据仍被合并（如实标注陈旧，但不丢数据）
+        assert result["items"][0]["tps"] == 106.99
+
+    def test_fresh_fetch_clears_stale(self):
+        mock_items = [{"id": "openai/gpt-5", "input": 1.0, "output": 2.0, "context": 1000, "tps": None, "ttft": None}]
+        stale = {"fetched_at": "2026-08-01T00:00:00+00:00",
+                 "models": {"gpt5": {"tps": 1.0, "ttft": 2.0}}}
+        new = {"gpt5": {"tps": 5.0, "ttft": 6.0}}
+        with patch.object(scraper, "fetch_all", return_value=(mock_items, [])), \
+             patch.object(scraper, "record_history"), \
+             patch.object(scraper, "maybe_backfill"), \
+             patch.object(scraper, "load_cache", return_value=None), \
+             patch.object(scraper, "save_cache"), \
+             patch.object(scraper, "load_aa_perf", return_value=stale), \
+             patch.object(scraper, "fetch_aa_perf", return_value=new), \
+             patch.object(scraper, "save_aa_perf"), \
+             patch.object(scraper, "fetch_throughput_rank", return_value={}):
+            result = scraper.collect()
+        assert result["aa_perf_stale"] is False
+        assert result["aa_perf_error"] is None
+        assert result["items"][0]["tps"] == 5.0
+
+    def test_fresh_cache_no_fetch(self):
+        import datetime as dt
+        mock_items = [{"id": "openai/gpt-5", "input": 1.0, "output": 2.0, "context": 1000, "tps": None, "ttft": None}]
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        cached = {"fetched_at": now, "models": {"gpt5": {"tps": 1.0, "ttft": 1.0}}}
+        calls = []
+        with patch.object(scraper, "fetch_all", return_value=(mock_items, [])), \
+             patch.object(scraper, "record_history"), \
+             patch.object(scraper, "maybe_backfill"), \
+             patch.object(scraper, "load_cache", return_value=None), \
+             patch.object(scraper, "save_cache"), \
+             patch.object(scraper, "load_aa_perf", return_value=cached), \
+             patch.object(scraper, "fetch_aa_perf", lambda: calls.append(1) or {}), \
+             patch.object(scraper, "fetch_throughput_rank", return_value={}):
+            result = scraper.collect()
+        assert result["aa_perf_stale"] is False
+        assert calls == []  # 24h 内新鲜缓存，不重复抓取
+        assert result["aa_perf_at"] == now
 
 
 class TestAnthropicParse:

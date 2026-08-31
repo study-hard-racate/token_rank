@@ -68,5 +68,11 @@ def test_api_data_with_deltas(client):
     assert "deltas7" in d
 
 
+def test_api_data_has_aa_perf_stale(client):
+    d = client.get("/api/data").get_json()
+    assert "aa_perf_stale" in d
+    assert "aa_perf_error" in d
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

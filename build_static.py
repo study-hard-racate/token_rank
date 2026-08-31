@@ -63,6 +63,8 @@ def write_data(items, payload):
         "updated": payload.get("updated"),
         "errors": payload.get("errors", []),
         "aa_perf_at": payload.get("aa_perf_at"),
+        "aa_perf_stale": payload.get("aa_perf_stale", False),
+        "aa_perf_error": payload.get("aa_perf_error"),
         "items": items,
     }
     with open(os.path.join(SITE, "data.json"), "w", encoding="utf-8") as f:

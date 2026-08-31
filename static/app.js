@@ -16,6 +16,7 @@ const SCENE_TIP = {
 
 const state = {
   aaPerfAt: null,
+  aaPerfStale: false,
   staticMode: null,
   allItems: [],
   histData: null,
@@ -104,6 +105,7 @@ async function loadData() {
     if (data.providers && data.providers.length) state.providers = data.providers;
     state.updated = data.updated;
     state.aaPerfAt = data.aa_perf_at || null;
+    state.aaPerfStale = !!data.aa_perf_stale;
     state.showAll = false;
     state.deltas = data.deltas7 || {};
     state.deltasFetched = true;
@@ -276,6 +278,7 @@ async function loadDataStatic() {
       state.allItems = data.items || [];
       state.updated = data.updated;
       state.aaPerfAt = data.aa_perf_at || null;
+      state.aaPerfStale = !!data.aa_perf_stale;
       state.staticErrors = data.errors || [];
       state.providers = [...new Set(state.allItems.map((x) => x.provider))].sort();
     }
@@ -463,7 +466,9 @@ function renderMeta(data) {
     ? `实时爬取各大模型 Token 费用 · 价格货币：人民币 ¥ / 100 万 tokens（汇率 1 USD ≈ ${state.rate}，可在上方修改或点"自动汇率"获取）`
     : "实时爬取各大模型 Token 费用 · 价格单位：美元 / 100 万 tokens";
   let perfAge = "";
-  if (state.aaPerfAt) {
+  if (state.aaPerfStale) {
+    perfAge = ` <span class="err" title="最近一次 AA 性能抓取失败，当前为缓存数据（${state.aaPerfAt ? fmtTime(state.aaPerfAt) : "?"} 抓取），下次刷新将重试">⚠ AA 性能抓取失败，当前用缓存</span>`;
+  } else if (state.aaPerfAt) {
     const days = (Date.now() - new Date(state.aaPerfAt).getTime()) / 86400000;
     if (days > 30) {
       perfAge = ` <span class="err" title="Artificial Analysis 官网当前不可达，性能数据来自 ${fmtTime(state.aaPerfAt)} 的缓存">⚠ 性能数据已 ${Math.floor(days)} 天未更新（数据源不可达，用缓存）</span>`;
@@ -895,7 +900,11 @@ function openDetail(id, name) {
       (d7.in_pct != null && d7.out_pct != null ? "；" : "") +
       (d7.out_pct != null ? `输出 ${d7.out_pct > 0 ? "▲" : "▼"}${Math.abs(d7.out_pct)}%` : "");
   const row = (label, val) => `<div class="sd-row"><span>${label}</span><b>${val}</b></div>`;
+  const staleNote = state.aaPerfStale
+    ? ` ⚠ 最近一次 AA 抓取失败，性能数据为 ${state.aaPerfAt ? fmtTime(state.aaPerfAt) : "?"} 的缓存（如实标注，下次刷新重试）`
+    : "";
   const fbk = (it.aa_perf ? ` ⚠ 性能数据（tps/首 token 时间）来自 Artificial Analysis 官网公开评测（按模型名匹配补充，数据抓取于 ${state.aaPerfAt ? fmtTime(state.aaPerfAt) : "?"}）` : "") +
+    staleNote +
     (it.idx_fallback ? ` ⚠ 能力指数为历史缓存值（本次抓取缺失时沿用上次结果，如实披露）` : "");
   const officialNote = it.official_price
     ? `<div class="sd-note">⚠ 本模型价格为 DeepSeek 官方定价（官方页 off-peak 档，$/100 万 tokens），已覆盖 OpenRouter 报价。</div>` : "";

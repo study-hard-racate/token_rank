@@ -20,11 +20,14 @@ class TestWriteData:
     def test_structure(self, monkeypatch, tmp_path):
         monkeypatch.setattr(build_static, "SITE", str(tmp_path))
         items = [{"id": "a", "input": 1.0, "ps": 100.0, "pf": {"general": {"v": 5.0, "src": "intel"}}, "sp": 50.0}]
-        build_static.write_data(items, {"updated": "t", "errors": ["e"], "aa_perf_at": None})
+        build_static.write_data(items, {"updated": "t", "errors": ["e"], "aa_perf_at": None,
+                                        "aa_perf_stale": True, "aa_perf_error": "aa down"})
         data = json.loads((tmp_path / "data.json").read_text(encoding="utf-8"))
         assert data["updated"] == "t"
         assert data["errors"] == ["e"]
         assert data["items"][0]["ps"] == 100.0
+        assert data["aa_perf_stale"] is True
+        assert data["aa_perf_error"] == "aa down"
 
 
 class TestCopyFrontend:

@@ -29,6 +29,7 @@ class _Resp:
 DEEPSEEK_HTML = """<html><body><table>
   <tr><th>MODEL</th><th>Flash</th><th>Pro</th></tr>
   <tr><th>MODEL VERSION</th><td>deepseek-v4-flash-0731</td><td>deepseek-v4-pro-0813</td></tr>
+  <tr><th>CONTEXT LENGTH</th><td>1M</td></tr>
   <tr><td>CACHE HIT (OFF-PEAK)</td><td>$0.007</td><td>$0.014</td></tr>
   <tr><td>PEAK CACHE HIT</td><td>$0.014</td><td>$0.028</td></tr>
   <tr><td>CACHE MISS (OFF-PEAK)</td><td>$0.077</td><td>$0.154</td></tr>
@@ -36,6 +37,30 @@ DEEPSEEK_HTML = """<html><body><table>
   <tr><td>OUTPUT TOKENS (OFF-PEAK)</td><td>$0.154</td><td>$0.308</td></tr>
   <tr><td>PEAK OUTPUT TOKENS</td><td>$0.308</td><td>$0.616</td></tr>
 </table></body></html>"""
+
+# ---- fixture: 2026-08-29 实证的真实三列结构（OFF-PEAK/PEAK 为独立行） ----
+DEEPSEEK_HTML_3COL = """<html><body><table>
+  <tr><th>MODEL</th><th>deepseek-v4-flash</th><th>deepseek-v4-pro</th><th>deepseek-v4-flash-vision-exp</th></tr>
+  <tr><th>MODEL VERSION</th><td>DeepSeek-V4-Flash-0731</td><td>DeepSeek-V4-Pro-0813</td><td>DeepSeek-V4-Flash-Vision-Exp</td></tr>
+  <tr><th>CONTEXT LENGTH</th><td>1M</td></tr>
+  <tr><td>1M INPUT TOKENS (CACHE HIT)</td><td>OFF-PEAK</td><td>$0.007</td><td>$0.022</td><td>$0.007</td></tr>
+  <tr><td>PEAK</td><td>$0.014</td><td>$0.044</td><td>$0.014</td></tr>
+  <tr><td>1M INPUT TOKENS (CACHE MISS)</td><td>OFF-PEAK</td><td>$0.22</td><td>$0.66</td><td>$0.22</td></tr>
+  <tr><td>PEAK</td><td>$0.44</td><td>$1.32</td><td>$0.44</td></tr>
+  <tr><td>1M OUTPUT TOKENS</td><td>OFF-PEAK</td><td>$0.66</td><td>$1.98</td><td>$0.66</td></tr>
+  <tr><td>PEAK</td><td>$1.32</td><td>$3.96</td><td>$1.32</td></tr>
+</table></body></html>"""
+
+
+class TestParseContext:
+    def test_units(self):
+        assert scraper._parse_context("1M") == 1000000
+        assert scraper._parse_context("128K") == 128000
+        assert scraper._parse_context("32000") == 32000
+        assert scraper._parse_context("1.5M") == 1500000
+        assert scraper._parse_context("") is None
+        assert scraper._parse_context(None) is None
+        assert scraper._parse_context("n/a") is None
 
 
 class TestScrapeDeepseek:
@@ -49,7 +74,7 @@ class TestScrapeDeepseek:
         assert flash["output"] == 0.154    # OUTPUT TOKENS OFF-PEAK
         assert flash["cache_in"] == 0.007  # CACHE HIT OFF-PEAK
         assert flash["provider"] == "DeepSeek"
-        assert flash["context"] == 1000000
+        assert flash["context"] == 1000000  # CONTEXT LENGTH 行解析（1M）
         latest = out[1]  # latest 紧随 flash 追加
         assert latest["id"] == "~deepseek/deepseek-v4-flash-latest"
         assert latest["name"] == "DeepSeek V4 Flash Latest (DeepSeek)"
@@ -57,6 +82,18 @@ class TestScrapeDeepseek:
         pro = out[2]
         assert pro["id"] == "deepseek/deepseek-v4-pro-0813"
         assert (pro["input"], pro["output"], pro["cache_in"]) == (0.154, 0.308, 0.014)
+
+    def test_context_parsed_from_row(self, monkeypatch):
+        html = DEEPSEEK_HTML.replace("<td>1M</td>", "<td>128K</td>")
+        monkeypatch.setattr(scraper, "_http_get", lambda *a, **k: _Resp(text=html))
+        out = scraper.scrape_deepseek()
+        assert out[0]["context"] == 128000
+
+    def test_context_missing_falls_back(self, monkeypatch):
+        html = DEEPSEEK_HTML.replace("<tr><th>CONTEXT LENGTH</th><td>1M</td></tr>", "")
+        monkeypatch.setattr(scraper, "_http_get", lambda *a, **k: _Resp(text=html))
+        out = scraper.scrape_deepseek()
+        assert out[0]["context"] == scraper.DEEPSEEK_DEFAULT_CONTEXT
 
     def test_missing_table_raises(self, monkeypatch):
         monkeypatch.setattr(scraper, "_http_get", lambda *a, **k: _Resp(text="<html>no table</html>"))
@@ -68,6 +105,40 @@ class TestScrapeDeepseek:
         monkeypatch.setattr(scraper, "_http_get", lambda *a, **k: _Resp(text=html))
         with pytest.raises(ValueError, match="MODEL row not found"):
             scraper.scrape_deepseek()
+
+
+class TestScrapeDeepseekThreeCol:
+    def test_parses_all_models(self, monkeypatch):
+        monkeypatch.setattr(scraper, "_http_get", lambda *a, **k: _Resp(text=DEEPSEEK_HTML_3COL))
+        out = scraper.scrape_deepseek()
+        by_id = {r["id"]: r for r in out}
+        assert len(out) == 4  # flash-0731 / flash-latest / pro-0813 / vision-exp
+        assert by_id["deepseek/deepseek-v4-flash-0731"]["input"] == 0.22
+        assert by_id["deepseek/deepseek-v4-flash-0731"]["cache_in"] == 0.007
+        assert by_id["deepseek/deepseek-v4-pro-0813"]["input"] == 0.66
+        assert by_id["deepseek/deepseek-v4-pro-0813"]["output"] == 1.98
+        assert by_id["deepseek/deepseek-v4-pro-0813"]["cache_in"] == 0.022
+        assert by_id["deepseek/deepseek-v4-flash-vision-exp"]["input"] == 0.22
+        assert by_id["deepseek/deepseek-v4-flash-vision-exp"]["output"] == 0.66
+        assert all(r["context"] == 1000000 for r in out)
+
+    def test_price_rows_shorter_than_models_skips_gracefully(self, monkeypatch):
+        # 页面结构异常：3 个模型列但价格行只有 2 个值 → 只产出 flash/pro，不崩溃
+        html = """<html><body><table>
+  <tr><th>MODEL</th><th>a</th><th>b</th><th>c</th></tr>
+  <tr><th>MODEL VERSION</th><td>V-A</td><td>V-B</td><td>V-C</td></tr>
+  <tr><th>CONTEXT LENGTH</th><td>1M</td></tr>
+  <tr><td>CACHE HIT (OFF-PEAK)</td><td>$0.007</td><td>$0.022</td></tr>
+  <tr><td>CACHE MISS (OFF-PEAK)</td><td>$0.22</td><td>$0.66</td></tr>
+  <tr><td>OUTPUT TOKENS (OFF-PEAK)</td><td>$0.66</td><td>$1.98</td></tr>
+</table></body></html>"""
+        monkeypatch.setattr(scraper, "_http_get", lambda *a, **k: _Resp(text=html))
+        out = scraper.scrape_deepseek()
+        ids = [r["id"] for r in out]
+        assert "deepseek/deepseek-v4-flash-0731" in ids
+        assert "deepseek/deepseek-v4-pro-0813" in ids
+        assert "deepseek/deepseek-v4-flash-vision-exp" not in ids  # 价格列不足，跳过
+        assert len(out) == 3  # flash + latest + pro
 
 
 # ---- fixture: Anthropic 官方定价页（$/MTok） ----

@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-08-21
 > 交接对象: 新会话
-> 项目版本: v44
+> 项目版本: v45
 
 ---
 
@@ -25,7 +25,7 @@
 - **GitHub Pages:** https://study-hard-racate.github.io/token_rank/
 - **PythonAnywhere:** https://byj.pythonanywhere.com/ (已停止维护)
 - **本地测试端口:** 8081 (8080 被占用)
-- **当前版本:** v44
+- **当前版本:** v45
 - **数据原则:** 永不伪造数据 (Data honesty principle)
 
 ---
@@ -77,7 +77,7 @@ token_rank/
 ## 4. 长期偏好 (Long-term Preferences)
 
 1. **数据完整性优先:** 宁可缺失数据，也绝不伪造数据
-2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v44)
+2. **版本迭代记录:** 每次重大更新都更新版本号 (v1, v2, ..., v45)
 3. **双模式兼容:** 前端必须同时支持静态模式和 API 模式
 4. **错误处理:** 数据抓取失败时记录日志，不影响整体流程
 5. **历史数据保留:** 所有历史数据必须持久化保存
@@ -161,7 +161,7 @@ token_rank/
 
 ## 7. 已完成的工作 (Completed Work)
 
-### v34-v44 完成内容
+### v34-v45 完成内容
 | 版本 | 内容 |
 |------|------|
 | v34 | 清理 PythonAnywhere 引用，完善 `.gitignore` |
@@ -175,6 +175,7 @@ token_rank/
 | v42 | 修复「分享链接」按钮失效（事件绑定缺失）；新增前端冒烟测试并接入 CI |
 | v43 | Phase 2 评分逻辑去重（scoring.py 唯一实现，Python/JS 对拍锁等价） |
 | v44 | Phase 3 测试覆盖补齐（fixture 解析/历史回补/AA 合并/构建/API 契约/Refresher，80 项） |
+| v45 | Phase 4 数据可靠性（sort 实证、DeepSeek context 解析 + vision-exp、aa_perf 陈旧标记） |
 
 ### 上轮改动（提交号：94d5218 → 3f749fb；项目版本 v40）
 | 类型 | 内容 |
@@ -217,7 +218,7 @@ token_rank/
 | 验证 | 重构后构建与 v42 产物对比：共同 id 的 ps/pf **零差异**（sp 差异为数据漂移，非逻辑）；真实数据 3330 组 Python/JS 对拍**零分歧**；app.py API 端到端形状不变；8081 静态服务正常 |
 | 版本 | v42 → v43 |
 
-### 本轮（本会话）改动（v44：Phase 3 测试覆盖补齐，2026-08-29）
+### 上轮改动（v44：Phase 3 测试覆盖补齐，2026-08-29）
 | 类型 | 内容 |
 |------|------|
 | 测试 | 新增 6 个测试文件、51 项用例，全套 **80/80 通过**（1.2s，无网络、不落盘） |
@@ -229,6 +230,16 @@ token_rank/
 | 线程 | `test_scraper_refresher.py`：Refresher 陈旧触发/新鲜跳过/并发去重/阻塞刷新 |
 | 说明 | 新增用例均为行为锁定（fixture 与解析逻辑严格对应）；期间修正 5 处测试自身预期错误（输出顺序、Unknown 语义、连续剥后缀、_last_backfill 读取、bound method 名称） |
 | 版本 | v43 → v44 |
+
+### 本轮（本会话）改动（v45：Phase 4 数据可靠性，2026-08-31）
+| 类型 | 内容 |
+|------|------|
+| 实证① | **OpenRouter `sort=throughput-high-to-low` 参数确认有效**：实测 396 个模型 id 集合一致但顺序完全重排，头部为 mercury-2 / nova-micro 等高吞吐模型；`fetch_throughput_rank` 逻辑维持不变，代码注释固化验证结论与失效预案 |
+| 实证② | **DeepSeek 官方页已升级为三列**（新增 `deepseek-v4-flash-vision-exp`），且有 `CONTEXT LENGTH | 1M` 行；据此：`scrape_deepseek` 从硬编码 `context=1000000` 改为**解析页面值**（`_parse_context` 支持 1M/128K/裸数字，行缺失兜底 1000000），并**新增 vision-exp 官方条目**（此前被静默丢弃） |
+| 健壮性 | `scrape_deepseek` 增加价格列越界保护：价格行短于模型列时跳过该列而非整源崩溃（页面结构变化时保底降级） |
+| 陈旧策略 | `collect()` 产出新增 `aa_perf_stale` / `aa_perf_error` 字段：**抓取失败回退旧缓存时如实标记**（此前前端只能靠「>30 天」启发式猜测）；build_static / app.py 透传；前端 renderMeta 与模型详情展示「⚠ AA 性能抓取失败，当前用缓存」+ 缓存数据时间 |
+| 测试 | 新增 9 项（`_parse_context`、context 解析/兜底、三列全模型、越界保护、collect 三路径 stale 标记、build_static/app 透传断言），全套 **89/89 通过**；`node --check` 通过 |
+| 版本 | v44 → v45 |
 
 ### 核心功能
 - ✅ 多数据源定价抓取 (DeepSeek, OpenRouter 等)
@@ -269,7 +280,7 @@ token_rank/
 
 ## 10. 当前进度 (Current Progress)
 
-**版本:** v44
+**版本:** v45
 **状态:** ✅ 稳定运行
 
 - [x] 核心数据抓取功能完成
@@ -285,6 +296,7 @@ token_rank/
 - [x] v42：分享链接按钮修复 + 前端冒烟测试接入 CI
 - [x] v43：Phase 2 评分逻辑去重完成（scoring.py 唯一实现；Python/JS 对拍 3330 组零分歧；29/29 测试通过）
 - [x] v44：Phase 3 测试覆盖补齐完成（fixture 解析/历史回补/AA 合并/构建/API 契约/Refresher；80/80 测试通过）
+- [x] v45：Phase 4 数据可靠性完成（sort 参数实证、DeepSeek context 解析 + vision-exp、aa_perf_stale 标记；89/89 测试通过）
 
 ---
 
@@ -310,7 +322,7 @@ token_rank/
 ## 12. 不能随意修改的内容 (Protected Items)
 
 1. **历史数据文件:** 根目录下 `data.json` / `history.json` / `aa_perf.json`（不可删除或覆盖）
-2. **版本号:** 当前版本为 v44，修改需有明确理由
+2. **版本号:** 当前版本为 v45，修改需有明确理由
 3. **Git 全局配置:** `sslBackend = openssl`
 4. **GitHub Actions Cron 时间:** `0 22,4,10,16 UTC`
 5. **数据原则:** 永不伪造数据
